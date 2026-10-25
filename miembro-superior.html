@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Miembro Superior 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: visor oscuro de una pantalla — panel lateral de control + lienzo 3D + ficha flotante */
+:root{
+  --bg:#0E1820; --panel:#132230; --panel-2:#192C3B; --line:#26394A;
+  --fg:#E7EEF2; --muted:#93A8B6; --accent:#8CC4E8;
+  --bone:#E9DFC9; --muscle:#C8513F; --nerve:#F1C24B; --artery:#E2483B; --vein:#5B8BDB;
+  --display:'Bricolage Grotesque', 'Trebuchet MS', sans-serif;
+  --body:'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+  --mono:'IBM Plex Mono', Consolas, monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:320px 1fr;height:100%}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;padding-block:18px 12px;gap:16px;overflow-y:auto}
+h1{font-family:var(--display);font-weight:700;font-size:26px;line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;line-height:1.45;margin:6px 0 0}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.tours{display:flex;flex-direction:column;gap:12px}
+.speaker{display:flex;flex-direction:column;gap:6px}
+.speaker .who{font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px}
+.speaker .who i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+button{font:inherit;color:inherit;cursor:pointer}
+.chip{background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12.5px}
+.chip:hover,.chip:focus-visible{border-color:var(--accent);outline:none}
+.chip.on{background:var(--accent);color:#0E1820;border-color:var(--accent)}
+.layers{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.layer{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer;user-select:none}
+.layer input{margin:0;accent-color:var(--accent)}
+.dot{width:10px;height:10px;border-radius:3px;flex:none}
+.search{width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--fg);padding:8px 10px;font:inherit}
+.search:focus{outline:2px solid var(--accent);outline-offset:1px}
+.list{display:flex;flex-direction:column;gap:2px;min-height:120px}
+.list h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px;display:flex;align-items:center;gap:6px}
+.item{text-align:left;background:none;border:0;border-radius:6px;padding:5px 8px;font-size:13px;color:var(--fg)}
+.item:hover,.item:focus-visible{background:var(--panel-2);outline:none}
+.item.on{background:var(--panel-2);box-shadow:inset 2px 0 0 var(--accent)}
+.stage{position:relative;min-width:0;min-height:0}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.tools{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tool{background:rgba(19,34,48,.85);border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:12.5px;backdrop-filter:blur(6px)}
+.tool:hover,.tool:focus-visible{border-color:var(--accent);outline:none}
+.tool.on{border-color:var(--accent);color:var(--accent)}
+.hint{position:absolute;left:14px;bottom:14px;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;pointer-events:none}
+.card{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(380px,calc(100% - 24px));max-height:58%;overflow-y:auto;background:rgba(19,34,48,.94);border:1px solid var(--line);border-radius:12px;padding:14px 16px;backdrop-filter:blur(8px);box-sizing:border-box}
+.card .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.card h2{font-family:var(--display);font-size:22px;font-weight:700;margin:4px 0 8px;line-height:1.1}
+.card dl{margin:0;display:grid;gap:8px}
+.card dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.card dd{margin:2px 0 0;line-height:1.45;font-size:13.5px}
+.card .clin{border-left:3px solid var(--artery);padding-left:10px}
+.card .x{position:absolute;top:10px;right:10px;background:none;border:0;color:var(--muted);font-size:18px;line-height:1;padding:4px}
+.label3d{position:absolute;pointer-events:none;transform:translate(-50%,-140%);background:var(--fg);color:#0E1820;font-weight:600;font-size:12.5px;padding:4px 9px;border-radius:6px;white-space:nowrap}
+.label3d::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top-color:var(--fg)}
+.note{font-size:11.5px;color:var(--muted);line-height:1.4;margin:0}
+aside>*{flex:none}
+.card .acts{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.mini{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12.5px}
+.mini:hover,.mini:focus-visible{border-color:var(--accent);outline:none}
+.mini.on{border-color:var(--accent);color:var(--accent)}
+.meter{font-family:var(--mono);font-size:14px;color:var(--accent);margin:-2px 0 10px;min-height:1.3em}
+.grp{opacity:.4;transition:opacity .25s}
+.grp.on{opacity:1}
+.card b{font-weight:600}
+.chip.mv.on{background:var(--nerve);border-color:var(--nerve)}
+.chip.cs.on{background:var(--artery);border-color:var(--artery);color:#fff}
+.drawer-btn{display:none}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;grid-template-rows:62% 38%}
+  aside{order:2;border-right:0;border-top:1px solid var(--line);padding-block:14px}
+  .stage{order:1}
+  .card{max-height:44%;padding:12px 14px}
+  .card h2{font-size:19px}
+  .tool{padding:6px 9px;font-size:12px}
+  h1{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside>
+    <div>
+      <p class="eyebrow">Anatomía Virtual · Unidad 5</p>
+      <h1>Miembro superior derecho</h1>
+      <p class="sub">Modelo esquemático en posición anatómica. Gira con el dedo o el mouse, acerca con la rueda o pellizcando y toca cualquier estructura para ver su ficha según el Latarjet.</p>
+    </div>
+
+    <section>
+      <p class="eyebrow">Recorridos guiados</p>
+      <div class="tours" id="tours"></div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Movimientos (animados)</p>
+      <div class="chips" id="moves"></div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Casos clínicos</p>
+      <div class="chips" id="cases"></div>
+    </section>
+
+    <section>
+      <p class="eyebrow">Capas</p>
+      <div class="layers" id="layers"></div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow" style="margin:0">Estructuras</p>
+      <input id="q" class="search" type="search" placeholder="Buscar: radial, deltoides, escafoides…" autocomplete="off">
+      <div class="list" id="list"></div>
+    </section>
+
+    <p class="note">Esquema didáctico: formas simplificadas y proporciones aproximadas. Para la anatomía detallada, confrontar con el atlas y el libro.</p>
+  </aside>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Modelo 3D del miembro superior"></canvas>
+    <div class="hint" id="hint">ARRASTRA PARA GIRAR · RUEDA PARA ACERCAR</div>
+    <div class="tools">
+      <a class="tool" href="./" style="text-decoration:none;color:inherit">← Menú</a>
+      <a class="tool" href="articulaciones.html" style="text-decoration:none;color:var(--accent);border-color:var(--accent)">Ver articulaciones →</a>
+      <button class="tool" id="ghost" type="button">Huesos translúcidos</button>
+      <button class="tool" id="ctx" type="button">Tórax</button>
+      <button class="tool" id="spin" type="button">Girar solo</button>
+      <button class="tool" id="flow" type="button">Flujo sanguíneo</button>
+      <button class="tool" id="build" type="button">Armar modelo</button>
+      <button class="tool" id="reset" type="button">Vista completa</button>
+    </div>
+    <div id="label" class="label3d" hidden></div>
+    <div class="card" id="card" hidden></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const css = getComputedStyle(document.documentElement);
+const tok = n => css.getPropertyValue(n).trim();
+const LAYERS = {
+  hueso:  {name:'Huesos',  color:tok('--bone')},
+  musculo:{name:'Músculos',color:tok('--muscle')},
+  nervio: {name:'Nervios', color:tok('--nerve')},
+  arteria:{name:'Arterias',color:tok('--artery')},
+  vena:   {name:'Venas',   color:tok('--vein')}
+};
+const SPEAKERS = {1:{name:'Osteología',color:'#E0B36A'},2:{name:'Artrología y músculos',color:'#E07A62'},3:{name:'Nervios, vasos, antebrazo y mano',color:'#8CC4E8'}};
+
+/* ---------- Escena ---------- */
+const canvas = document.getElementById('c'), stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false, preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setClearColor(new THREE.Color(tok('--bg')));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 500);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minDistance = 8; controls.maxDistance = 240;
+scene.add(new THREE.HemisphereLight(0xdfe9f2, 0x2a2018, 0.75));
+const d1 = new THREE.DirectionalLight(0xffffff, 0.85); d1.position.set(40,30,50); scene.add(d1);
+const d2 = new THREE.DirectionalLight(0x9fb8ff, 0.35); d2.position.set(-40,10,-40); scene.add(d2);
+const root = new THREE.Group(); scene.add(root);
+
+const V = (a)=>new THREE.Vector3(a[0],a[1],a[2]);
+const tmp = new THREE.Vector3();
+function tubeGeo(pts, r, taper=true, minF=0.3){
+  const curve = new THREE.CatmullRomCurve3(pts.map(V), false, 'centripetal');
+  const seg = Math.max(20, Math.round(curve.getLength()*2.2)), rs = 12;
+  const geo = new THREE.TubeGeometry(curve, seg, r, rs, false); geo.userData.curve=curve; geo.userData.r=r;
+  if (taper){
+    const pos = geo.attributes.position;
+    for (let i=0;i<=seg;i++){
+      const t=i/seg, c=curve.getPointAt(t), f=minF+(1-minF)*Math.pow(Math.sin(Math.PI*t),0.55);
+      for (let j=0;j<=rs;j++){ const k=i*(rs+1)+j; tmp.fromBufferAttribute(pos,k).sub(c).multiplyScalar(f).add(c); pos.setXYZ(k,tmp.x,tmp.y,tmp.z); }
+    }
+    geo.computeVertexNormals();
+  }
+  return geo;
+}
+function sphereGeo(c, s){ const g=new THREE.SphereGeometry(1,20,14); g.scale(s[0],s[1],s[2]); g.translate(c[0],c[1],c[2]); return g; }
+function prismGeo(pts, th){
+  const [a,b,c]=pts.map(V); const n=new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)).normalize().multiplyScalar(th/2);
+  const P=[a,b,c].map(p=>p.clone().add(n)), Q=[a,b,c].map(p=>p.clone().sub(n));
+  const v=[...P,...Q].flatMap(p=>[p.x,p.y,p.z]);
+  const idx=[0,1,2, 5,4,3, 0,3,4,0,4,1, 1,4,5,1,5,2, 2,5,3,2,3,0];
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(v,3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+
+/* ---------- Registro ---------- */
+const REG = {}; const pickables = [];
+function add(id, layer, name, geos, info, opt={}){
+  const color = opt.color || LAYERS[layer].color;
+  const mat = new THREE.MeshStandardMaterial({color, roughness: layer==='hueso'?0.7:0.55, metalness:0.02, emissive:0x000000});
+  const meshes = geos.map(g=>{ const m=new THREE.Mesh(g,mat); m.userData.id=id; root.add(m); pickables.push(m); return m; });
+  const box = new THREE.Box3(); meshes.forEach(m=>box.expandByObject(m));
+  REG[id] = {id, layer, name, meshes, mat, info, base:new THREE.Color(color), group:opt.group||'', center: opt.label?V(opt.label):box.getCenter(new THREE.Vector3())};
+}
+const T = (pts,r,taper,minF)=>tubeGeo(pts,r,taper,minF);
+const S = (c,s)=>sphereGeo(c,s);
+
+/* ---------- Contexto: tórax ---------- */
+const ctxGroup = new THREE.Group(); root.add(ctxGroup);
+const ctxMat = new THREE.MeshBasicMaterial({color:0x8FA5B3, transparent:true, opacity:0.12, depthWrite:false});
+for (let i=0;i<9;i++){
+  const y = 7 - i*3.1, rx = 11.5 + Math.sin(i/8*Math.PI)*1.2, rz = 7.2;
+  const g = new THREE.TorusGeometry(1, 0.035, 6, 48, Math.PI*1.25); g.scale(rx,rz,1); g.rotateX(Math.PI/2); g.rotateY(Math.PI*0.62); g.translate(-16,y,-1);
+  ctxGroup.add(new THREE.Mesh(g, ctxMat));
+}
+{ const g=new THREE.CylinderGeometry(0.9,0.9,46,12); g.translate(-16,-8,-8.6); ctxGroup.add(new THREE.Mesh(g,ctxMat));
+  const s=new THREE.BoxGeometry(2.4,20,0.8); s.translate(-16,-4,7); ctxGroup.add(new THREE.Mesh(s,ctxMat)); }
+
+/* ---------- HUESOS ---------- */
+add('clavicula','hueso','Clavícula',[T([[-14.5,5.4,6],[-10,6,7],[-4,6.2,4],[0,5.8,0],[2,5.2,-1.6]],0.55,false), S([-14.5,5.4,6],[0.9,0.8,0.8]), S([2,5.2,-1.6],[0.8,0.45,0.8])],{
+  grupo:'Cintura pectoral', exp:1,
+  rows:[['Forma','Hueso alargado en S itálica, del esternón al acromion. Dos caras, dos bordes y dos extremidades.'],
+        ['Inserciones','Borde anterior: pectoral mayor (medial) y deltoides (lateral). Borde posterior: esternocleidomastoideo y trapecio. Cara inferior: lig. costoclavicular, surco del subclavio, tuberosidad del lig. coracoclavicular.'],
+        ['Estructura','Se comporta como hueso plano, sin canal medular definido. Se osifica sobre un esbozo fibroconectivo.']],
+  clin:'Su situación superficial la expone a los traumatismos: sus fracturas son frecuentes, pero consolidan en poco tiempo.'});
+add('escapula','hueso','Escápula',[prismGeo([[-9,5,-6.9],[-8,-15,-6.9],[-1.6,0,-4.4]],0.45), T([[-9,1.2,-7.5],[-4,3.4,-6.6],[0,4.6,-5.4],[2.6,5,-2.6]],0.5,false), S([2.6,5.1,-2.3],[1.4,0.35,1.2]), T([[-1.6,3,-3.4],[-0.6,4,-1.4],[0.5,2.6,1.2]],0.42,false), S([-0.6,0,-3.7],[0.35,1.25,0.85])],{
+  grupo:'Cintura pectoral', exp:1,
+  rows:[['Forma','Hueso plano y triangular sobre la parte posterior del tórax: dos caras, tres bordes y tres ángulos.'],
+        ['Reparos','Fosa subescapular; espina que termina en el acromion; fosas supraespinosa e infraespinosa; cavidad glenoidea; proceso coracoides (pectoral menor, cabeza corta del bíceps, coracobraquial).'],
+        ['Incisura','Un ligamento la convierte en foramen: por debajo pasa el nervio supraescapular y por encima la arteria.']],
+  clin:'La cavidad glenoidea es poco cóncava: no basta para contener la cabeza del húmero, por eso existe el labrum.'});
+add('humero','hueso','Húmero',[S([0.8,0,-2.8],[2.2,2.2,2.2]), S([2.9,0.7,-2.2],[0.9,1,0.9]), S([1.7,0,-0.8],[0.6,0.7,0.6]), T([[2.1,-2,-2.4],[2.2,-15,-2.1],[2.2,-28,-1.8]],0.95,false), T([[-1,-30.2,-1.8],[2,-30.6,-1.7],[5,-30.2,-1.8]],0.85,false), S([-1.1,-30.2,-1.8],[0.9,0.7,0.7]), S([5.1,-30.2,-1.8],[0.7,0.6,0.6]), S([0.8,-31.2,-1.5],[1.1,0.8,0.9]), S([3.4,-31.2,-1.2],[0.8,0.8,0.8])],{
+  grupo:'Brazo', exp:1,
+  rows:[['Extremidad superior','Cabeza, cuello anatómico, tubérculo mayor (supraespinoso, infraespinoso, redondo menor) y menor (subescapular), surco intertubercular. Cuello quirúrgico: límite epífisis–diáfisis.'],
+        ['Diáfisis','Tuberosidad deltoidea. Surco del nervio radial: el hueso no está torcido, la impresión la deja el nervio con la arteria braquial profunda.'],
+        ['Extremidad inferior','Cóndilo humeral: tróclea (ulna) y capítulo (radio). Fosas radial, coronoidea y olecraneana. Epicóndilos lateral y medial.']],
+  clin:'Relaciones nerviosas de riesgo: axilar (cuello quirúrgico), radial (diáfisis), ulnar (detrás del epicóndilo medial).'});
+add('ulna','hueso','Ulna (cúbito)',[S([0.6,-29.6,-3],[0.9,1.4,0.9]), T([[0.7,-30.6,-2.6],[0.7,-33,-2.0],[0.5,-45,-1.6],[0.6,-55.4,-1.4]],0.62,true,0.7), S([0.6,-55.8,-1.4],[0.65,0.6,0.65]), S([0.2,-56.6,-1.8],[0.25,0.6,0.25])],{
+  grupo:'Antebrazo', exp:1,
+  rows:[['Situación','Medial. Voluminosa arriba y pequeña abajo, a la inversa del radio.'],
+        ['Extremidad superior','Incisura troclear entre el olécranon (tríceps) y el proceso coronoides; tuberosidad de la ulna (braquial); incisura radial.'],
+        ['Extremidad inferior','Cabeza y proceso estiloides; separada del carpo por el disco articular.']],
+  clin:'Las fracturas del olécranon se desplazan mucho por la tracción del tríceps.'});
+add('radio','hueso','Radio',[S([3.6,-32,-1.4],[0.95,0.5,0.95]), T([[3.7,-32.4,-1.4],[3.8,-34,-1.3],[4.6,-45,-1.0],[5.0,-55,-1.0]],0.55,false), S([5.0,-56,-1.0],[1.35,0.9,1.05]), S([6.2,-57,-0.9],[0.3,0.6,0.3])],{
+  grupo:'Antebrazo', exp:1,
+  rows:[['Situación','Lateral. Su extremidad inferior está más desarrollada que la superior.'],
+        ['Extremidad superior','Cabeza (se articula con el capítulo y la incisura radial), cuello que forma el ángulo cervicodiafisario y tuberosidad del radio, donde se inserta el bíceps.'],
+        ['Extremidad inferior','Proceso estiloides, carillas para escafoides y semilunar, incisura ulnar y surcos de los tendones extensores.']],
+  clin:'La extremidad inferior del radio es la que se fractura con más frecuencia. Una consolidación imperfecta puede bloquear la pronosupinación.'});
+const carp = [
+  ['escafoides','Escafoides',[5.4,-57.7,-0.8],[0.75,0.55,0.6],'Fila proximal, el más lateral. Se articula con el radio. Es el hueso del carpo más expuesto y el que con mayor frecuencia se fractura; se palpa en el fondo de la tabaquera anatómica.'],
+  ['semilunar','Semilunar',[3.9,-57.5,-1.0],[0.65,0.55,0.6],'Fila proximal. Se articula con el radio, el escafoides, el piramidal, el grande y el ganchoso.'],
+  ['piramidal','Piramidal',[2.4,-57.7,-1.2],[0.6,0.5,0.55],'Fila proximal. Se articula con el disco articular, el pisiforme, el semilunar y el ganchoso.'],
+  ['pisiforme','Pisiforme',[1.9,-57.9,0.4],[0.42,0.42,0.42],'Fila proximal, sobre el piramidal. En él se inserta el flexor ulnar del carpo.'],
+  ['trapecio_h','Trapecio (hueso)',[6.3,-59.7,-0.4],[0.62,0.55,0.6],'Fila distal. Se articula con el primer metacarpiano en la articulación selar del pulgar.'],
+  ['trapezoide','Trapezoide',[4.9,-59.7,-0.8],[0.5,0.5,0.5],'Fila distal. El más profundo de los huesos del carpo.'],
+  ['grande','Grande',[3.5,-59.5,-1.0],[0.62,0.8,0.62],'Fila distal. Forma de tapón de champaña; se articula con los metacarpianos 2.º, 3.º y 4.º.'],
+  ['ganchoso','Ganchoso',[2.0,-59.6,-1.0],[0.6,0.6,0.6],'Fila distal. Se reconoce por su gancho; se articula con los metacarpianos 4.º y 5.º.']
+];
+carp.forEach(([id,n,c,s,t])=>{
+  const geos=[S(c,s)]; if(id==='ganchoso') geos.push(S([2.3,-59.5,0.3],[0.3,0.35,0.5]));
+  add(id,'hueso',n,geos,{grupo:'Carpo', exp:1, rows:[['Descripción',t],['Mnemotecnia','“Esa Señora Pide Pan, Tú Tráele Grandes Galletas”.']], clin: id==='escafoides'?'Caída sobre la mano extendida con dolor en la tabaquera: sospechar fractura del escafoides.':''},{group:'carpo'});
+});
+const mcs=[[ [6.9,-60.5,0],[8.7,-64.4,1.6] ],[ [4.8,-60.6,-0.9],[5.4,-67,-0.9] ],[ [3.4,-60.6,-1.0],[3.6,-67.4,-1.0] ],[ [2.1,-60.6,-1.0],[1.9,-67,-1.0] ],[ [0.9,-60.6,-0.9],[0.4,-66.2,-0.9] ]];
+add('metacarpo','hueso','Metacarpianos',mcs.flatMap(([a,b])=>[T([a,b],0.38,false),S(b,[0.48,0.48,0.48])]),{grupo:'Mano', exp:1,
+  rows:[['Descripción','Cinco huesos largos numerados del pulgar al meñique: base (carpo) y cabeza (falange proximal).'],['Particularidades','El 1.º es el más corto. El 3.º tiene proceso estiloides para el extensor radial corto del carpo.']],
+  clin:'Según el libro, sus fracturas son bastante frecuentes en los boxeadores.'});
+const fing=[[ [8.8,-64.8,1.8],[9.8,-68,2.6],[10.3,-70.4,3.0] ],[ [5.5,-67.6,-0.9],[5.8,-71.6,-0.9],[5.9,-74,-0.9],[6,-75.8,-0.9] ],[ [3.6,-68,-1],[3.6,-72.6,-1],[3.6,-75.4,-1],[3.6,-77.3,-1] ],[ [1.8,-67.6,-1],[1.6,-71.8,-1],[1.5,-74.4,-1],[1.4,-76.2,-1] ],[ [0.3,-66.8,-0.9],[0,-70,-0.9],[-0.1,-72,-0.9],[-0.2,-73.6,-0.9] ]];
+const fgeo=[]; fing.forEach(f=>{ for(let i=0;i<f.length-1;i++){ fgeo.push(T([f[i],f[i+1]],0.32,false)); fgeo.push(S(f[i+1],[0.36,0.36,0.36])); } });
+add('falanges','hueso','Falanges',fgeo,{grupo:'Mano', exp:1, rows:[['Descripción','Tres por dedo (proximal, media y distal), excepto el pulgar, que tiene dos. En la base de la falange proximal del pulgar hay dos sesamoideos.']], clin:'Son piezas frágiles; el tratamiento de sus fracturas es delicado.'});
+
+/* ---------- MÚSCULOS ---------- */
+const M = (id,name,group,tubes,info,label)=>add(id,'musculo',name,tubes.map(t=>T(t[0],t[1],true,t[2]??0.3)),info,{group,label});
+// Toracoapendiculares
+M('trapecio','Trapecio','toraco',[[[[-16,13,-8.4],[-10,9,-7.4],[-2,5.6,-3.4],[1.6,5.1,-1.9]],1.6],[[[-16,1,-8.8],[-9,2.8,-7.8],[-3,4,-6.4]],1.4],[[[-16,-12,-8.8],[-11,-4,-8.2],[-7.4,1,-7.8]],1.4]],{
+  grupo:'Toracoapendicular posterior · plano superficial', exp:2,
+  rows:[['Inserciones','Occipital, ligamento nucal y procesos espinosos torácicos → tercio lateral de la clavícula, acromion y espina de la escápula.'],['Inervación','Ramo lateral del nervio accesorio y ramos de C2–C4 del plexo cervical.'],['Acción','Eleva el hombro y acerca la escápula a la columna. Fijado en la cintura, extiende la cabeza. Porción descendente: rotadora superior de la escápula.']]});
+M('romboides','Romboides','toraco',[[[[-16,3,-8.6],[-12,-3,-8.2],[-8.8,-8,-7.6]],1.1],[[[-16,-5,-8.8],[-12,-10,-8.2],[-8.6,-13,-7.6]],1.1]],{
+  grupo:'Toracoapendicular posterior · plano medio', exp:2,
+  rows:[['Inserciones','Procesos espinosos de C7 a T5 → borde medial de la escápula.'],['Inervación','Nervio dorsal de la escápula (C5).'],['Acción','Desplaza la escápula medialmente; contribuye al descenso del hombro.']]});
+M('elevador','Elevador de la escápula','toraco',[[[[-14.2,13.4,-4.4],[-11,9,-6.4],[-9,5.4,-7.2]],0.7]],{
+  grupo:'Toracoapendicular posterior · plano medio', exp:2,
+  rows:[['Inserciones','Procesos transversos del atlas y de C2–C4 → ángulo superomedial de la escápula.'],['Inervación','Nervio dorsal de la escápula (C5).'],['Acción','Eleva el ángulo superior de la escápula; con punto fijo en ella, inclina el cuello.']]});
+M('serrato','Serrato anterior','toraco',[0,4,8,12].map(o=>[[[-8.6,2-o,-6.2],[-5.2,1-o,-3],[-4.6,-1-o,0.9]],0.75]),{
+  grupo:'Toracoapendicular anterior · plano profundo', exp:2,
+  rows:[['Inserciones','Borde medial de la escápula (cara costal) → caras laterales de las costillas.'],['Inervación','Nervio torácico largo (C5, C6, C7), “nervio respiratorio de Charles Bell”.'],['Acción','Aplica la escápula contra el tórax en todos los movimientos del brazo y la hace oscilar en la abducción. Inspirador accesorio.']]},[-5,-5,-1]);
+M('pectoral_menor','Pectoral menor','toraco',[[[[-7,-8,5.4],[-3,-3,3.6],[0.3,2.4,1.2]],1.0]],{
+  grupo:'Toracoapendicular anterior · plano profundo', exp:2,
+  rows:[['Inserciones','Costillas 3.ª a 5.ª → proceso coracoides.'],['Inervación','Nervio pectoral medial (C8–T1).'],['Acción','Desciende la escápula; con punto fijo en el coracoides, es inspirador.']]});
+M('subclavio','Subclavio','toraco',[[[[-13,4.6,6],[-9,5.1,6.2],[-5.6,5.3,5.4]],0.5]],{
+  grupo:'Toracoapendicular anterior · plano profundo', exp:2,
+  rows:[['Inserciones','Primer cartílago costal → cara inferior de la clavícula.'],['Inervación','Nervio subclavio (C5–C6), con un ramo para el frénico.'],['Acción','Desciende la clavícula y el hombro.']]});
+M('pectoral_mayor','Pectoral mayor','toraco',[[[[-15,4.4,7.4],[-6,-1,7],[2.6,-6,0.5]],1.5],[[[-15,-3,7.8],[-6,-3,7.2],[2.6,-6.4,0.4]],1.6],[[[-12,-12,7.2],[-5,-7,6.4],[2.6,-6.8,0.3]],1.4]],{
+  grupo:'Une el tronco al húmero', exp:2,
+  rows:[['Inserciones','Porciones clavicular, esternocostal y abdominal → labio lateral del surco intertubercular.'],['Inervación','Nervios pectorales lateral y medial, unidos por el asa de los pectorales.'],['Acción','Aductor y rotador medial del brazo. Con punto fijo en el húmero, levanta el tronco al “trepar”.']]},[-5,-3,7]);
+M('dorsal_ancho','Dorsal ancho','toraco',[[[[-16,-28,-9.2],[-7,-16,-7.6],[1.6,-6,-0.7]],1.6],[[[-12,-24,-6.8],[-5,-14,-5],[1.6,-6.2,-0.6]],1.5],[[[-16,-14,-9],[-7,-9,-7.6],[1.4,-5.8,-0.9]],1.3]],{
+  grupo:'Une el tronco al húmero', exp:2,
+  rows:[['Inserciones','Espinosas torácicas bajas y lumbares, sacro, cresta ilíaca y últimas costillas (fascia toracolumbar) → fondo del surco intertubercular.'],['Inervación','Nervio toracodorsal (C7–C8), del fascículo posterior.'],['Acción','Aductor y rotador medial; lleva el brazo hacia atrás. Levanta el tronco al trepar.']]},[-8,-16,-8]);
+// Escapulohumerales
+M('deltoides','Deltoides','escapulo',[[[[-1,5.6,1.6],[4.4,0,1.2],[3.6,-13,-1.6]],1.4],[[[3,5.6,-2.4],[5.6,0.4,-2.4],[3.7,-13,-1.7]],1.5],[[[-2,4.6,-6.2],[4.2,0,-5.6],[3.6,-13,-1.9]],1.3]],{
+  grupo:'Escapulohumeral · superficial', exp:2,
+  rows:[['Inserciones','Tercio lateral de la clavícula, acromion y espina de la escápula → tuberosidad deltoidea.'],['Inervación','Nervio axilar (C5–C6), que llega por el espacio axilar lateral.'],['Acción','Abductor del brazo; según sus fascículos lo lleva transversalmente, hacia adelante o hacia atrás.']],
+  clin:'Su parálisis por lesión del axilar (luxación del hombro, fractura del cuello quirúrgico) quita una abducción irreemplazable.'},[5.2,-3,-1.5]);
+M('supraespinoso','Supraespinoso','escapulo',[[[[-8,3.4,-6.8],[-3,3.3,-5.4],[2.7,1.9,-2.7]],0.9]],{
+  grupo:'Escapulohumeral · manguito rotador', exp:2,
+  rows:[['Inserciones','Fosa supraespinosa → cara superior del tubérculo mayor. Pasa bajo el acromion.'],['Inervación','Nervio supraescapular (C5–C6), por la incisura de la escápula.'],['Acción','Su contribución a la abducción se jerarquiza hoy como esencial (Codman).']],
+  clin:'Con el deltoides inicia la abducción. Su tendón pasa bajo la bóveda acromiocoracoidea.'});
+M('infraespinoso','Infraespinoso','escapulo',[[[[-7,-6,-7.4],[-2,-2.6,-6.2],[2.9,-0.4,-3.7]],1.4]],{
+  grupo:'Escapulohumeral · manguito rotador', exp:2,
+  rows:[['Inserciones','Fosa infraespinosa → superficie media del tubérculo mayor.'],['Inervación','Nervio supraescapular (C5).'],['Acción','Rotador lateral y abductor; aplica la cabeza contra la glenoide: ligamento activo.']]});
+M('redondo_menor','Redondo menor','escapulo',[[[[-3.4,-6,-5.8],[0,-3.4,-5],[2.5,-1.6,-3.7]],0.6]],{
+  grupo:'Escapulohumeral · manguito rotador', exp:2,
+  rows:[['Inserciones','Mitad superior del borde lateral de la escápula → superficie inferior del tubérculo mayor.'],['Inervación','Ramo del nervio axilar (C5–C6).'],['Acción','Rotador lateral; mantiene la cabeza humeral en la cavidad glenoidea.']]});
+M('subescapular','Subescapular','escapulo',[[[[-7,-4,-5.7],[-3,-1.5,-3.4],[1.5,0,-0.9]],1.4]],{
+  grupo:'Escapulohumeral · manguito rotador', exp:2,
+  rows:[['Inserciones','Fosa subescapular → tubérculo menor del húmero; su tendón cubre el foramen oval.'],['Inervación','Nervios subescapulares superior e inferior (C5–C6).'],['Acción','Aductor y rotador medial; fija la cabeza contra la glenoide.']]});
+M('redondo_mayor','Redondo mayor','escapulo',[[[[-7.6,-13,-7],[-3,-8,-3.6],[1.4,-4.6,-1.2]],0.9]],{
+  grupo:'Escapulohumeral', exp:2,
+  rows:[['Inserciones','Ángulo inferior de la escápula → cresta del tubérculo menor.'],['Inervación','Nervio subescapular inferior (C6–C7).'],['Acción','Aductor y rotador medial; lleva el brazo hacia atrás.']]});
+M('coracobraquial','Coracobraquial','escapulo',[[[[0.5,2.4,1.2],[0.8,-6,0.4],[1.5,-13,-0.6]],0.6]],{
+  grupo:'Escapulohumeral', exp:2,
+  rows:[['Inserciones','Vértice del coracoides → tercio superior de la cara medial del húmero.'],['Inervación','Nervio musculocutáneo (C5–C6), que lo perfora (músculo de Casserius).'],['Acción','Aductor, rotador medial y anteversor del brazo.']]});
+// Brazo
+M('biceps','Bíceps braquial','brazo',[[[[-0.3,1.9,-3.1],[2,2.7,-1.6],[2,-3,0.6],[2.1,-12,1.9],[2.5,-22,2.2],[3.2,-31,0.9],[3.8,-33.2,-0.6]],1.15,0.25],[[[0.5,2.4,1.2],[1.1,-6,1.6],[1.9,-14,2.0]],0.8]],{
+  grupo:'Brazo · compartimento anterior', exp:2,
+  rows:[['Inserciones','Cabeza larga: borde superior de la cavidad glenoidea (intraarticular). Cabeza corta: coracoides → tuberosidad del radio y aponeurosis bicipital.'],['Inervación','Nervio musculocutáneo (C5–C6).'],['Acción','Flexor del antebrazo y supinador, sobre todo con el codo en semiflexión.']]},[2.4,-16,2.6]);
+M('braquial','Braquial','brazo',[[[[2.7,-14,-0.4],[2.2,-24,0.4],[1.2,-32.6,-0.7]],1.2]],{
+  grupo:'Brazo · compartimento anterior', exp:2,
+  rows:[['Inserciones','Mitad inferior del húmero → proceso coronoides y tuberosidad de la ulna.'],['Inervación','Nervio musculocutáneo (C6–C7).'],['Acción','Flexor del antebrazo por excelencia, en pronación o supinación; más potente que el bíceps.']]});
+M('triceps','Tríceps braquial','brazo',[[[[-1.2,-1.4,-3.8],[0,-10,-4.4],[1.4,-22,-3.8],[0.7,-29.6,-3.5]],1.3],[[[3.2,-4,-3.3],[3,-15,-4],[1.3,-28,-3.6]],1.1],[[[2.2,-17,-3.1],[1.2,-28,-3.2]],0.9]],{
+  grupo:'Brazo · compartimento posterior', exp:2,
+  rows:[['Inserciones','Cabeza larga: tubérculo infraglenoideo. Cabeza lateral: por encima del surco radial. Cabeza medial: por debajo → olécranon.'],['Inervación','Nervio radial (C6–C8).'],['Acción','Extensor del antebrazo; predomina la cabeza medial.']]},[1.4,-14,-4.6]);
+// Antebrazo anterior
+const A = 'ant';
+M('pronador_redondo','Pronador redondo',A,[[[[-0.8,-30.6,-0.6],[2.6,-36,0.7],[4.8,-42,-0.4]],0.7]],{grupo:'Antebrazo anterior · 1.er plano', exp:3,rows:[['Inserciones','Epicóndilo medial y coronoides → cara lateral del radio.'],['Inervación','Nervio mediano (C6); el mediano pasa entre sus dos fascículos.'],['Acción','Pronador; accesoriamente flexor del codo.']]});
+M('flexor_radial','Flexor radial del carpo',A,[[[[-0.9,-30.8,-0.8],[2.4,-42,0.9],[4.6,-55,0.1],[4.9,-60.6,-0.2]],0.6]],{grupo:'Antebrazo anterior · 1.er plano', exp:3,rows:[['Inserciones','Epicóndilo medial → base del 2.º metacarpiano.'],['Inervación','Nervio mediano (C6).'],['Acción','Flexiona la mano y la inclina algo lateralmente.']]});
+M('palmar_largo','Palmar largo',A,[[[[-1,-31,-0.9],[1.6,-44,0.9],[3.4,-56,0.5],[3.4,-60,0.9]],0.45]],{grupo:'Antebrazo anterior · 1.er plano', exp:3,rows:[['Inserciones','Epicóndilo medial → aponeurosis palmar.'],['Inervación','Nervio mediano.'],['Acción','Flexiona la mano y tensa la aponeurosis palmar.']]});
+M('flexor_ulnar','Flexor ulnar del carpo',A,[[[[-1.2,-31,-1.5],[0,-44,-0.6],[1.4,-55,0.1],[1.9,-57.8,0.4]],0.65]],{grupo:'Antebrazo anterior · 1.er plano', exp:3,rows:[['Inserciones','Epicóndilo medial y olécranon → pisiforme, gancho del ganchoso y 5.º metacarpiano.'],['Inervación','Nervio ulnar (C8–T1), que pasa bajo su arcada.'],['Acción','Flexiona la mano.']]});
+M('flexor_superficial','Flexor superficial de los dedos',A,[[[[-0.6,-31.4,-1.1],[2,-42,0.3],[3,-55,-0.1],[3.3,-60,-0.2]],1.0]],{grupo:'Antebrazo anterior · 2.º plano', exp:3,rows:[['Inserciones','Epicóndilo medial, coronoides y radio → falange media de los dedos 2.º a 5.º (tendón perforado).'],['Inervación','Nervio mediano (C7–T1).'],['Acción','Flexiona la falange media; pasa por el túnel carpiano.']],clin:'Su isquemia produce la parálisis isquémica de Volkmann.'});
+M('flexor_profundo','Flexor profundo de los dedos',A,[[[[0.8,-34,-1.4],[1.6,-45,-0.9],[2.8,-56,-0.7],[3.2,-60,-0.7]],0.9]],{grupo:'Antebrazo anterior · 3.er plano', exp:3,rows:[['Inserciones','Ulna, membrana interósea y radio → falange distal de los dedos 2.º a 5.º (tendón perforante).'],['Inervación','Mediano (interóseo anterior) para índice y medio; ulnar para anular y meñique.'],['Acción','Flexiona la falange distal.']]});
+M('flexor_largo_pulgar','Flexor largo del pulgar',A,[[[[4.4,-38,-0.8],[5,-50,-0.4],[5.6,-58,-0.2],[7.6,-63,1.3]],0.6]],{grupo:'Antebrazo anterior · 3.er plano', exp:3,rows:[['Inserciones','Radio y membrana interósea → falange distal del pulgar.'],['Inervación','Nervio interóseo anterior, del mediano.'],['Acción','Flexiona las falanges del pulgar.']]});
+M('pronador_cuadrado','Pronador cuadrado',A,[[[[0.6,-53,-0.8],[2.8,-53.4,-0.4],[5,-53,-0.6]],0.6]],{grupo:'Antebrazo anterior · 4.º plano', exp:3,rows:[['Inserciones','Cuarto inferior de la ulna → cuarto inferior del radio.'],['Inervación','Nervio interóseo anterior, del mediano (C8).'],['Acción','Pronador, en movimientos lentos o rápidos, débiles o potentes.']]});
+// Anteroexterna
+const L='lat';
+M('braquiorradial','Braquiorradial',L,[[[[2.9,-22,-1.2],[5.8,-30,0.3],[5.6,-42,0.5],[5.8,-55.6,-0.5]],0.9]],{grupo:'Antebrazo · región anteroexterna', exp:3,rows:[['Inserciones','Borde lateral del húmero → base del proceso estiloides del radio.'],['Inervación','Nervio radial, por encima del codo (C6).'],['Acción','Flexor del codo. Su acción supinadora es nula, aunque antes se le llamaba “supinador largo”.']],clin:'Con el flexor radial del carpo limita el canal del pulso radial.'});
+M('erlc','Extensor radial largo del carpo',L,[[[[3.3,-26,-1.7],[6,-34,-0.8],[5.2,-50,-1.6],[4.8,-60.8,-1.6]],0.7]],{grupo:'Antebrazo · región anteroexterna', exp:3,rows:[['Inserciones','Borde lateral del húmero → dorso de la base del 2.º metacarpiano.'],['Inervación','Nervio radial, por encima del codo (C6).'],['Acción','Extiende la mano y la lleva en abducción.']]});
+M('ercc','Extensor radial corto del carpo',L,[[[[5,-30.4,-2.1],[5.2,-40,-2.1],[4.4,-56,-2.1],[3.6,-60.8,-1.8]],0.65]],{grupo:'Antebrazo · región anteroexterna', exp:3,rows:[['Inserciones','Epicóndilo lateral → base del 3.er metacarpiano.'],['Inervación','Ramo profundo del nervio radial (C7).'],['Acción','Extensor más directo de la mano; también abducción.']]});
+M('supinador','Supinador',L,[[[[5.1,-30.8,-2.3],[4.9,-33,-2.6],[3.3,-35,-0.3],[4.1,-38,-0.3]],0.6]],{grupo:'Antebrazo · región anteroexterna', exp:3,rows:[['Inserciones','Epicóndilo lateral, ligamento colateral y ulna → cara anterior del radio, rodeando su cuello.'],['Inervación','Ramo profundo del nervio radial (C6), que lo atraviesa.'],['Acción','Supinación; el bíceps se suma cuando se requiere fuerza.']]});
+// Posterior
+const P='post';
+M('extensor_dedos','Extensor de los dedos',P,[[[[4.8,-30.8,-2.7],[3.6,-42,-3.1],[3.4,-56,-2.5],[3.4,-61,-1.9]],0.75]],{grupo:'Antebrazo posterior · capa superficial', exp:3,rows:[['Inserciones','Epicóndilo lateral → aparato extensor de los dedos 2.º a 5.º.'],['Inervación','Ramo profundo del nervio radial (C7).'],['Acción','Extiende las falanges proximales y la mano.']]});
+M('extensor_menique','Extensor del meñique',P,[[[[4.2,-31,-2.9],[2.4,-44,-2.9],[1.4,-56,-2.3],[0.6,-61,-1.7]],0.45]],{grupo:'Antebrazo posterior · capa superficial', exp:3,rows:[['Inserciones','Epicóndilo lateral → tendón extensor del meñique.'],['Inervación','Ramo profundo del nervio radial.'],['Acción','Contribuye a la independencia relativa del meñique.']]});
+M('extensor_ulnar','Extensor ulnar del carpo',P,[[[[4,-31,-3.1],[1.4,-42,-2.7],[0.4,-55,-2.1],[0.8,-60.6,-1.5]],0.6]],{grupo:'Antebrazo posterior · capa superficial', exp:3,rows:[['Inserciones','Epicóndilo lateral y borde posterior de la ulna → base del 5.º metacarpiano.'],['Inervación','Ramo profundo del nervio radial.'],['Acción','Extensor y aductor de la mano.']]});
+M('anconeo','Ancóneo',P,[[[[4.6,-30.6,-2.7],[2.6,-32.4,-3.2],[1.2,-33.6,-2.9]],0.5]],{grupo:'Antebrazo posterior · capa superficial', exp:3,rows:[['Inserciones','Epicóndilo lateral → olécranon y ulna.'],['Inervación','Ramo del nervio de la cabeza medial del tríceps (radial).'],['Acción','Refuerza la extensión del codo (una quinta parte de su fuerza).']]});
+M('abductor_largo','Abductor largo del pulgar',P,[[[[2.2,-40,-2.7],[4.6,-48,-2.1],[6.4,-55,-0.9],[6.9,-60.3,-0.1]],0.5]],{grupo:'Antebrazo posterior · capa profunda', exp:3,rows:[['Inserciones','Ulna, membrana interósea y radio → base del 1.er metacarpiano.'],['Inervación','Ramo profundo del nervio radial.'],['Acción','Abductor del pulgar.']],clin:'Con el extensor corto forma el borde lateral de la tabaquera anatómica.'});
+M('extensor_corto_pulgar','Extensor corto del pulgar',P,[[[[2.6,-44,-2.5],[5,-50,-1.9],[6.6,-56,-0.7],[8.8,-64.6,1.6]],0.4]],{grupo:'Antebrazo posterior · capa profunda', exp:3,rows:[['Inserciones','Ulna, membrana interósea y radio → base de la falange proximal del pulgar.'],['Inervación','Ramo profundo del nervio radial.'],['Acción','Extiende la falange proximal del pulgar.']]});
+M('extensor_largo_pulgar','Extensor largo del pulgar',P,[[[[1.6,-42,-2.5],[3.6,-50,-2.3],[4.8,-56,-1.9],[7,-61,-0.7],[10,-69,2.5]],0.4]],{grupo:'Antebrazo posterior · capa profunda', exp:3,rows:[['Inserciones','Ulna y membrana interósea → base de la falange distal del pulgar.'],['Inervación','Ramo profundo del nervio radial.'],['Acción','Extiende la falange distal del pulgar, sin ayuda de los músculos de la mano.']],clin:'Forma el borde medial de la tabaquera anatómica.'});
+M('extensor_indice','Extensor del índice',P,[[[[1.2,-46,-2.3],[3.2,-55,-2.1],[5,-62,-1.7]],0.4]],{grupo:'Antebrazo posterior · capa profunda', exp:3,rows:[['Inserciones','Ulna y membrana interósea → tendón extensor del índice.'],['Inervación','Ramo profundo del nervio radial.'],['Acción','Refuerza la extensión del índice.']]});
+// Mano
+M('tenar','Eminencia tenar','mano',[[[[5.2,-60,0.3],[6.6,-62,1.3],[7.6,-63.6,1.4]],1.2,0.45]],{grupo:'Músculos de la mano', exp:3,rows:[['Músculos','Abductor corto, flexor corto, oponente y aductor del pulgar.'],['Inervación','Mediano (ramo tenar): abductor corto, oponente y cabeza superficial del flexor corto. Ulnar: aductor y cabeza profunda del flexor corto.'],['Acción','El oponente lleva el 1.er metacarpiano adelante y medialmente: oposición.']],clin:'Su atrofia aplana la palma (mano simia).'});
+M('hipotenar','Eminencia hipotenar','mano',[[[[1.4,-59.6,0.6],[0.8,-62.6,0.6],[0.4,-65,0.1]],1.0,0.45]],{grupo:'Músculos de la mano', exp:3,rows:[['Músculos','Palmar corto, abductor, flexor corto y oponente del meñique.'],['Inervación','Nervio ulnar (ramo superficial para el palmar corto, profundo para los demás).'],['Acción','Separan el meñique más que los otros dedos; no le dan oposición.']]});
+M('interoseos','Interóseos y lumbricales','mano',[[ [4.2,-61,-0.6],[4.6,-66.6,-0.4] ],[ [2.8,-61,-0.6],[2.8,-66.8,-0.4] ],[ [1.5,-61,-0.6],[1.2,-66.4,-0.4] ],[ [6,-61.4,-0.2],[5.6,-66.4,-0.2] ]].map(p=>[p,0.38]),{grupo:'Músculos de la mano', exp:3,rows:[['Interóseos','Siete: palmares (aproximan los dedos) y dorsales (los separan). Nervio ulnar, ramo profundo (C8).'],['Lumbricales','Cuatro, del tendón flexor profundo al extensor. 1.º y 2.º: mediano; 3.º y 4.º: ulnar.'],['Acción común','Flexionan la falange proximal y extienden la media y la distal.']]},[3,-64,-0.5]);
+
+/* ---------- NERVIOS ---------- */
+const N = (id,name,tubes,info,label)=>add(id,'nervio',name,tubes.map(p=>T(p,tubes.r||0.24,false)),info,{group:'nervio',label});
+const Sp=[-9,8,-2.2], Mi=[-9,6.4,-2.4], In=[-9,4.8,-2.6], Lc=[-2.6,0.9,1.6], Pc=[-2.6,-0.5,0.1], Mc=[-2.6,-1.3,1.0];
+add('plexo','nervio','Plexo braquial',[
+  ...[12,10.4,8.8,7.2,5.6].map((y,i)=>T([[-14.8,y,-5.4],[-12,y-1.4,-3.8], i<2?Sp:(i==2?Mi:In)],0.3,false)),
+  T([Sp,[-5.4,4,0.6],Lc],0.3,false), T([Sp,[-5.6,3.2,-1],Pc],0.28,false),
+  T([Mi,[-5.4,3.4,0.6],Lc],0.28,false), T([Mi,[-5.6,2.6,-1.2],Pc],0.28,false),
+  T([In,[-5.6,1.8,-1.4],Pc],0.28,false), T([In,[-5.4,1.4,0.4],Mc],0.3,false),
+  S(Sp,[0.45,0.45,0.45]), S(Mi,[0.42,0.42,0.42]), S(In,[0.45,0.45,0.45])
+],{grupo:'Plexo braquial', exp:3,
+  rows:[['Origen','Ramos anteriores de C5, C6, C7, C8 y T1. Inervación sensitiva, motora, vasomotora y propioceptiva.'],
+        ['Troncos','Superior: C5 + C6 (con comunicante de C4). Medio: C7. Inferior: C8 + T1 (con comunicante de T2).'],
+        ['Fascículos','Posterior (tres divisiones posteriores): radial y axilar. Lateral: musculocutáneo y raíz lateral del mediano. Medial: raíz medial del mediano, ulnar y cutáneo antebraquial medial.'],
+        ['Trayecto','Entre los escalenos anterior y medio, bajo la clavícula, hasta la axila; forma de reloj de arena.']],
+  clin:'C5 y C6 se acodan sobre su surco óseo y pueden lesionarse por tracción.'},{group:'nervio',label:[-8,7,-2]});
+N('musculocutaneo','Nervio musculocutáneo',[[Lc,[-0.4,-2,1.5],[0.9,-7,0.6],[2.4,-18,1.3],[4.4,-30,1.3],[5.2,-36,0.9],[6,-50,0.5]]],{grupo:'Ramo terminal · fascículo lateral', exp:3,rows:[['Raíces','C5, C6 y C7.'],['Trayecto','Perfora el coracobraquial (Casserius), desciende entre bíceps y braquial y se hace cutáneo sobre el codo.'],['Inerva','Coracobraquial, bíceps y braquial; piel anterolateral del antebrazo.']]},[0.9,-8,1.2]);
+N('mediano','Nervio mediano',[[Lc,[-1.4,-3,1.7]],[Mc,[-1.4,-3,1.7]],[[-1.4,-3,1.7],[-0.2,-14,1.5],[-0.4,-29.6,0.7],[1,-35,0.4],[2.6,-45,0.2],[3.4,-57.6,0.5],[3.6,-61,0.7]],[[3.6,-61,0.7],[6.4,-62,1.2]],[[3.6,-61,0.7],[5.6,-66,0.5]],[[3.6,-61,0.7],[4,-67,0.3]],[[3.6,-61,0.7],[2.8,-66.6,0.2]]],{grupo:'Ramo terminal · dos raíces', exp:3,rows:[['Raíces','Raíz lateral + raíz medial (horquilla del mediano); fibras de C5 a T1.'],['Trayecto','No da ramos hasta la fosa del codo; pasa entre las cabezas del pronador redondo, desciende por el eje del antebrazo y atraviesa el túnel carpiano.'],['Inerva','Pronadores, casi todos los flexores, eminencia tenar (ramo tenar) y lumbricales 1.º y 2.º. Piel palmar lateral.']],clin:'Más amenazado en el carpo (túnel carpiano). Su parálisis altera gravemente la prensión: oposición y cierre de los dedos.'},[2.6,-45,0.6]);
+N('ulnar','Nervio ulnar (cubital)',[[Mc,[-1.9,-6,0.7],[-1.3,-18,-1.6],[-1.7,-30.2,-2.7],[-0.4,-34,-1.1],[0.6,-45,-0.7],[1.4,-57.6,0.8],[1.4,-60,0.5]],[[1.4,-60,0.5],[0.6,-65,0.4]],[[1.4,-60,0.5],[1.9,-66,0.1]],[[1.4,-60,0.5],[3.6,-61.6,-0.3],[6,-62.4,0.2]]],{grupo:'Ramo terminal · fascículo medial', exp:3,rows:[['Raíces','C7, C8 y T1.'],['Trayecto','Pasa detrás del tabique intermuscular medial y del epicóndilo medial; sigue al flexor ulnar del carpo y entra a la mano por el canal de Guyon.'],['Inerva','Flexor ulnar del carpo, mitad medial del flexor profundo, hipotenar, interóseos, lumbricales 3.º y 4.º y aductor del pulgar.']],clin:'Su parálisis: garra del anular y del meñique, atrofia hipotenar e interósea y “signo del diario”.'},[-1.6,-24,-1.6]);
+N('radial','Nervio radial',[[Pc,[-1,-3,-0.7],[0.2,-8,-3.3],[2.5,-14,-3.7],[4.2,-20,-2.7],[4.7,-26,-0.4],[4.5,-31,0.1]],[[4.5,-31,0.1],[5.6,-42,0.7],[6,-54,0.1],[6.6,-58,-1.1],[6.4,-62,-1.7]],[[4.5,-31,0.1],[4.7,-34,-1.5],[3.6,-38,-2.9],[2.8,-48,-2.7]]],{grupo:'Ramo terminal · fascículo posterior', exp:3,rows:[['Raíces','C5 a C8. Continuación del fascículo posterior.'],['Trayecto','Espacio axilar inferior, surco del nervio radial del húmero con la braquial profunda, surco bicipital lateral. Se divide en ramo superficial (sensitivo) y profundo (motor), que atraviesa el supinador.'],['Inerva','Tríceps, ancóneo, braquiorradial, todos los extensores y el supinador. Piel posterior y dorso de la mano.']],clin:'Es el nervio extensor. Amenazado en las fracturas de la diáfisis humeral: produce caída de la mano.'},[2.8,-14,-4]);
+N('axilar','Nervio axilar',[[Pc,[-1,-2.2,-1.1],[0.6,-4.2,-3.7],[2.9,-4.6,-3.3],[4.1,-3.2,-1.5]]],{grupo:'Ramo terminal · fascículo posterior', exp:3,rows:[['Raíces','C5 y C6.'],['Trayecto','Atraviesa el espacio axilar lateral con la arteria circunfleja humeral posterior y rodea el cuello quirúrgico.'],['Inerva','Deltoides y redondo menor; piel de la cara lateral del hombro.']],clin:'Amenazado en las luxaciones del hombro y en las fracturas del cuello quirúrgico: explorar la sensibilidad del hombro es un acto elemental.'},[1,-4.4,-4]);
+N('cutaneo_antebraquial','N. cutáneo antebraquial medial',[[Mc,[-1.9,-8,1.3],[-1.7,-26,1.1],[-1.4,-40,0.9],[0.2,-54,0.7]]],{grupo:'Ramo terminal · fascículo medial', exp:3,rows:[['Tipo','Únicamente sensitivo (C8–T1).'],['Territorio','Lado medial del antebrazo hasta el carpo; desciende junto a la vena basílica.']]});
+N('supraescapular','Nervio supraescapular',[[Sp,[-7,6,-4.6],[-5.6,4.2,-6.8],[-3,1.6,-6.6],[-2,-2,-6.8]]],{grupo:'Ramo colateral posterior', exp:3,rows:[['Origen','Tronco superior (C5–C6).'],['Trayecto','Pasa por la incisura de la escápula, bajo el ligamento transverso superior.'],['Inerva','Supraespinoso e infraespinoso.']]});
+N('dorsal_escapula','Nervio dorsal de la escápula',[[[-14.4,11.4,-4.8],[-11,6,-7.6],[-9.8,-4,-8]]],{grupo:'Ramo colateral posterior', exp:3,rows:[['Origen','C5.'],['Inerva','Elevador de la escápula y romboides.']]});
+N('toracico_largo','Nervio torácico largo',[[[-13.8,9,-4.6],[-9,3,-3.2],[-6.6,-4,-2],[-6.2,-12,-1.4]]],{grupo:'Ramo colateral inferior', exp:3,rows:[['Origen','C5, C6 y a veces C7.'],['Trayecto','Por delante del escaleno medio y por la cara lateral del tórax; un ramo para cada digitación.'],['Inerva','Serrato anterior.']],clin:'Su lesión impide aplicar la escápula contra el tórax.'});
+N('toracodorsal','Nervio toracodorsal',[[Pc,[-3.4,-4,-2.7],[-5,-12,-4.6]]],{grupo:'Ramo colateral posterior', exp:3,rows:[['Origen','Fascículo posterior (C7–C8).'],['Inerva','Dorsal ancho; un ramo para el redondo mayor.']]});
+N('pectorales','Nervios pectorales',[[Lc,[-3,2,3.5],[-5,0,5.5]],[Mc,[-3,-1,3.7],[-4,-4,4.8]]],{grupo:'Ramos colaterales anteriores', exp:3,rows:[['Origen','Lateral: fascículo lateral (C5–C7). Medial: fascículo medial (C8–T1).'],['Asa de los pectorales','Se comunican por delante de la arteria axilar.'],['Inervan','Pectoral mayor y pectoral menor.']]});
+
+/* ---------- ARTERIAS ---------- */
+const Ar = (id,name,tubes,r,info,label)=>add(id,'arteria',name,tubes.map(p=>T(p,r,false)),info,{group:'arteria',label});
+Ar('subclavia','Arteria subclavia',[[[-15,7,4],[-11,7.6,2.7],[-6,5,1.7],[-3.4,3,1.3]]],0.36,{grupo:'Eje arterial', exp:3,rows:[['Relación','Está por delante y por debajo del plexo braquial; pasa bajo la clavícula y se continúa como axilar.']]});
+Ar('axilar_a','Arteria axilar',[[[-3.4,3,1.3],[-2.2,0,1.3],[-0.8,-5,1.3]]],0.36,{grupo:'Eje arterial', exp:3,rows:[['Límites','De la mitad de la clavícula al borde inferior del pectoral mayor. 8 a 10 mm de diámetro.'],['Segmentos','Por encima, detrás y por debajo del pectoral menor.'],['Ramas','Torácica superior, toracoacromial, torácica lateral, subescapular y circunflejas humerales anterior y posterior.']],clin:'El nervio mediano es su satélite: “permanece fiel a la arteria”.'});
+Ar('braquial_a','Arteria braquial',[[[-0.8,-5,1.3],[-0.6,-15,1.3],[0.6,-28,1.1],[1.8,-33,0.3]]],0.33,{grupo:'Eje arterial', exp:3,rows:[['Trayecto','Cara anteromedial del brazo, en el canal braquial junto al nervio mediano; termina 4 cm bajo el codo en radial y ulnar.'],['Ramas','Braquial profunda, colaterales ulnares superior e inferior, nutricia del húmero.']],clin:'En la fosa del codo se buscan sus pulsaciones para medir la presión arterial.'});
+Ar('braquial_profunda','Arteria braquial profunda',[[[-0.6,-7,1.1],[0.6,-9,-3.1],[2.6,-15,-3.5],[4.4,-22,-2.3],[4.8,-27,-0.7]]],0.18,{grupo:'Rama de la braquial', exp:3,rows:[['Trayecto','Acompaña al nervio radial por el espacio axilar inferior y el surco del nervio radial; irriga el tríceps.']]});
+Ar('circunflejas','Arterias circunflejas humerales',[[[-1,-3.6,0.9],[0.6,-4.3,-3.7],[3,-4.3,-2.9]],[[-1,-3.6,1.1],[1.6,-3.7,0.3],[3,-3.9,-1.3]]],0.16,{grupo:'Ramas de la axilar', exp:3,rows:[['Descripción','Anterior y posterior forman un círculo alrededor del cuello quirúrgico. La posterior acompaña al nervio axilar por el espacio axilar lateral e irriga el deltoides.']]});
+Ar('radial_a','Arteria radial',[[[1.8,-33,0.3],[4.4,-40,0.7],[5.4,-52,0.5],[5.8,-56.6,-0.1],[6.6,-58.6,-1.4],[5.8,-61.4,-1.2],[4.4,-61.7,-0.6],[2,-61.9,-0.6]]],0.26,{grupo:'Rama terminal de la braquial', exp:3,rows:[['Trayecto','Entre braquiorradial y flexor radial del carpo hasta el canal del pulso; cruza la tabaquera anatómica y forma el arco palmar profundo.']],clin:'La palpación del pulso radial es, según el libro, tal vez el gesto más antiguo del examen médico. Prueba de Allen antes de ligarla.'},[5.4,-50,0.9]);
+Ar('ulnar_a','Arteria ulnar (cubital)',[[[1.8,-33,0.3],[0.8,-40,-0.4],[0.8,-50,-0.1],[1.4,-58,1.0],[2.2,-63.6,0.7],[4.4,-64,0.7],[6,-63,0.7]]],0.26,{grupo:'Rama terminal de la braquial', exp:3,rows:[['Trayecto','Pasa bajo el pronador redondo, se une al nervio ulnar y entra a la mano por el canal de Guyon; forma el arco palmar superficial.'],['Ramas','Recurrente ulnar, interósea común (anterior y posterior) y rama palmar profunda.']]},[0.6,-46,0.3]);
+
+/* ---------- VENAS ---------- */
+const Ve = (id,name,pts,info)=>add(id,'vena',name,[T(pts,0.24,false)],info,{group:'vena'});
+Ve('cefalica','Vena cefálica',[[6.1,-58,-0.9],[6.5,-45,0.9],[5.7,-32,1.9],[4.5,-20,1.7],[3.9,-8,2.3],[1.7,1,2.9],[-1,3,2.5],[-3,3.2,1.7]],{grupo:'Red venosa superficial', exp:3,rows:[['Trayecto','Lado lateral del antebrazo y del brazo; surco deltopectoral; perfora la fascia clavipectoral y termina en la vena axilar.']]});
+Ve('basilica','Vena basílica',[[0.3,-58,-0.7],[-0.7,-45,0.7],[-1.5,-32,1.3],[-1.7,-22,1.5],[-1.3,-14,1.5]],{grupo:'Red venosa superficial', exp:3,rows:[['Trayecto','Lado medial; perfora la fascia braquial en la mitad del brazo y termina en una vena braquial o en la axilar.']]});
+Ve('mediana_codo','Vena mediana del codo',[[4.9,-31,2.1],[2.6,-33,2.3],[0.6,-33.6,2.1],[-1.5,-31,1.5]],{grupo:'Red venosa superficial', exp:3,rows:[['Descripción','Une cefálica y basílica en la fosa del codo (M venosa del pliegue del codo), lugar de las punciones venosas.']]});
+
+/* ---------- Articulaciones: deformación por pesos ---------- */
+const PK=['abd','flex','rot','elbow','pron','wrist','mcpL','ipL','mcpM','ipM'];
+function fullPose(p){ const o={}; PK.forEach(k=>o[k]=p[k]||0); return o; }
+const D2R=Math.PI/180;
+const PV={sh:[0.8,0,-2.8], hum:[2.1,0,-2.3], el:[2,-30.6,-1.7], wr:[3.4,-58.2,-0.8], mcp:[0,-67.2,-0.9], pip:[0,-71.6,-0.9], dip:[0,-74.4,-0.9], pa:[3.6,-32,-1.4]};
+const KX=[1,0,0], KY=[0,1,0], KZ=[0,0,1];
+const PAv=new THREE.Vector3(3.6,-32,-1.4), PBv=new THREE.Vector3(0.6,-56,-1.4);
+const PAX=PBv.clone().sub(PAv), PLEN=PAX.length(); PAX.normalize(); const KP=[PAX.x,PAX.y,PAX.z];
+const sm=(a,b,x)=>{ let t=(x-a)/(b-a); t=t<0?0:t>1?1:t; return t*t*(3-2*t); };
+function weights(x,y,z){
+  const fing=1-sm(6.6,7.6,x);
+  const t=((x-PAv.x)*PAX.x+(y-PAv.y)*PAX.y+(z-PAv.z)*PAX.z)/PLEN;
+  return [ sm(-66.6,-67.8,y)*fing, sm(-71,-72.2,y)*fing, sm(-73.8,-75,y)*fing, 1-sm(2.4,3.0,x),
+           sm(-57,-59.5,y), sm(0.05,1,t), sm(-29.5,-32.5,y), sm(-0.5,-5,y)*sm(-5,-1.5,x) ];
+}
+function rot(p,o,k,a,n){
+  if(a>-1e-5 && a<1e-5) return;
+  const c=Math.cos(a), s=Math.sin(a), ox=n?0:o[0], oy=n?0:o[1], oz=n?0:o[2];
+  const x=p[0]-ox, y=p[1]-oy, z=p[2]-oz, d=(k[0]*x+k[1]*y+k[2]*z)*(1-c);
+  p[0]=x*c+(k[1]*z-k[2]*y)*s+k[0]*d+ox;
+  p[1]=y*c+(k[2]*x-k[0]*z)*s+k[1]*d+oy;
+  p[2]=z*c+(k[0]*y-k[1]*x)*s+k[2]*d+oz;
+}
+function deform(p,w,P,n){
+  const mw=w[3], mcp=(P.mcpL*(1-mw)+P.mcpM*mw)*D2R, ip=(P.ipL*(1-mw)+P.ipM*mw)*D2R;
+  if(w[2]) rot(p,PV.dip,KX,-ip*0.7*w[2],n);
+  if(w[1]) rot(p,PV.pip,KX,-ip*w[1],n);
+  if(w[0]) rot(p,PV.mcp,KX,-mcp*w[0],n);
+  if(w[4]) rot(p,PV.wr,KX,-P.wrist*D2R*w[4],n);
+  if(w[5]) rot(p,PV.pa,KP,P.pron*D2R*w[5],n);
+  if(w[6]) rot(p,PV.el,KX,-P.elbow*D2R*w[6],n);
+  if(w[7]){ const q=w[7]; rot(p,PV.hum,KY,P.rot*D2R*q,n); rot(p,PV.sh,KX,-P.flex*D2R*q,n); rot(p,PV.sh,KZ,P.abd*D2R*q,n); }
+}
+const DEF=[];
+Object.values(REG).forEach(r=>r.meshes.forEach(m=>{
+  const g=m.geometry, pos=g.attributes.position, n=pos.count, W=new Float32Array(n*8); let any=false;
+  for(let i=0;i<n;i++){ const w=weights(pos.getX(i),pos.getY(i),pos.getZ(i)); for(let k=0;k<8;k++){ W[i*8+k]=w[k]; if(w[k]>1e-4) any=true; } }
+  if(any) DEF.push({g, rp:pos.array.slice(), rn:g.attributes.normal.array.slice(), W});
+}));
+const _p=[0,0,0], _n=[0,0,0], _w=new Array(8);
+function applyPoseAll(P){
+  for(const d of DEF){
+    const pa=d.g.attributes.position.array, na=d.g.attributes.normal.array, rp=d.rp, rn=d.rn, W=d.W, n=pa.length/3;
+    for(let i=0;i<n;i++){
+      const i3=i*3, i8=i*8; for(let k=0;k<8;k++) _w[k]=W[i8+k];
+      _p[0]=rp[i3]; _p[1]=rp[i3+1]; _p[2]=rp[i3+2]; deform(_p,_w,P,false);
+      _n[0]=rn[i3]; _n[1]=rn[i3+1]; _n[2]=rn[i3+2]; deform(_n,_w,P,true);
+      pa[i3]=_p[0]; pa[i3+1]=_p[1]; pa[i3+2]=_p[2]; na[i3]=_n[0]; na[i3+1]=_n[1]; na[i3+2]=_n[2];
+    }
+    d.g.attributes.position.needsUpdate=true; d.g.attributes.normal.needsUpdate=true; d.g.computeBoundingSphere();
+  }
+}
+function deformPoint(v,out){ const w=weights(v.x,v.y,v.z); const q=[v.x,v.y,v.z]; deform(q,w,state.pose,false); return out.set(q[0],q[1],q[2]); }
+
+/* ---------- Materiales ---------- */
+const GRAY=new THREE.Color('#5F676E');
+function applyMaterials(){
+  const para=state.caseObj?new Set(state.caseObj.para):null;
+  Object.values(REG).forEach(r=>{
+    let op=1;
+    if(state.ghost && r.layer==='hueso') op=0.22;
+    if(state.iso && state.sel && r.id!==state.sel) op=Math.min(op,0.08);
+    r.mat.transparent=op<1; r.mat.opacity=op; r.mat.depthWrite=op>=1;
+    r.mat.color.copy(para&&para.has(r.id)?GRAY:r.base); r.mat.needsUpdate=true;
+  });
+}
+
+/* ---------- UI ---------- */
+const state = {layers:{hueso:true,musculo:true,nervio:true,arteria:true,vena:false}, ghost:false, ctx:true, sel:null, iso:false, move:null, caseObj:null, flow:false, spin:false, cardMode:null, pose:fullPose({}), poseTarget:fullPose({}), hl:null, impNerves:null, gIdx:-1};
+const layersEl = document.getElementById('layers');
+Object.entries(LAYERS).forEach(([k,l])=>{
+  const lab=document.createElement('label'); lab.className='layer';
+  lab.innerHTML=`<input type="checkbox" id="ly-${k}"><span class="dot" style="background:${l.color}"></span>${l.name}`;
+  layersEl.appendChild(lab);
+  lab.querySelector('input').addEventListener('change',e=>{state.layers[k]=e.target.checked; applyVis();});
+});
+function applyVis(){
+  Object.values(REG).forEach(r=>r.meshes.forEach(m=>m.visible=state.layers[r.layer]));
+  Object.keys(LAYERS).forEach(k=>document.getElementById('ly-'+k).checked=state.layers[k]);
+  applyMaterials();
+  ctxGroup.visible=state.ctx;
+  document.getElementById('ghost').classList.toggle('on',state.ghost);
+  document.getElementById('ctx').classList.toggle('on',state.ctx);
+  renderList();
+}
+
+const GROUPS = [
+  ['hueso',null,'Huesos'],
+  ['musculo','toraco','Toracoapendiculares'],['musculo','escapulo','Escapulohumerales'],['musculo','brazo','Brazo'],
+  ['musculo','ant','Antebrazo anterior'],['musculo','lat','Antebrazo anteroexterno'],['musculo','post','Antebrazo posterior'],['musculo','mano','Mano'],
+  ['nervio',null,'Nervios'],['arteria',null,'Arterias'],['vena',null,'Venas']
+];
+const listEl=document.getElementById('list'), q=document.getElementById('q');
+function norm(s){return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
+function renderList(){
+  const term=norm(q.value.trim()); listEl.innerHTML='';
+  GROUPS.forEach(([layer,group,title])=>{
+    const items=Object.values(REG).filter(r=>r.layer===layer && (group===null || r.group===group) && (!term || norm(r.name).includes(term)));
+    if(!items.length) return;
+    const h=document.createElement('h4'); h.innerHTML=`<span class="dot" style="background:${LAYERS[layer].color}"></span>${title}`; listEl.appendChild(h);
+    items.forEach(r=>{ const b=document.createElement('button'); b.type='button'; b.className='item'+(state.sel===r.id?' on':''); b.textContent=r.name; b.addEventListener('click',()=>{ if(!state.layers[r.layer]){state.layers[r.layer]=true; applyVis();} select(r.id,true); }); listEl.appendChild(b); });
+  });
+}
+q.addEventListener('input',renderList);
+
+const card=document.getElementById('card'), label=document.getElementById('label');
+function select(id, fly){
+  state.sel=id; state.iso=false;
+  if(!id){
+    state.cardMode=null; card.hidden=true;
+    if(state.move) moveCard(); else if(state.caseObj) caseCard();
+    applyMaterials(); renderList(); return;
+  }
+  state.cardMode='item';
+  const r=REG[id];
+  card.innerHTML=`<button class="x" type="button" aria-label="Cerrar ficha">×</button>
+    <div class="tag" style="color:${LAYERS[r.layer].color}"><span class="dot" style="background:${LAYERS[r.layer].color}"></span>${r.info.grupo||LAYERS[r.layer].name}</div>
+    <h2>${r.name}</h2>
+    <dl>${r.info.rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
+    ${r.info.clin?`<div class="clin"><dt>Correlación clínica</dt><dd>${r.info.clin}</dd></div>`:''}</dl>
+    <div class="acts"><button class="mini" type="button" id="iso">Aislar estructura</button></div>`;
+  card.querySelector('.x').addEventListener('click',()=>select(null));
+  card.querySelector('#iso').addEventListener('click',e=>{ state.iso=!state.iso; e.currentTarget.classList.toggle('on',state.iso); e.currentTarget.textContent=state.iso?'Mostrar todo':'Aislar estructura'; applyMaterials(); });
+  card.hidden=false; applyMaterials();
+  if(fly){ const c=deformPoint(r.center,new THREE.Vector3()); const dir=camera.position.clone().sub(controls.target).normalize(); flyTo(c.toArray(), c.clone().add(dir.multiplyScalar(30)).toArray()); }
+  renderList();
+}
+
+/* ---------- Recorridos ---------- */
+const TOURS = [
+  {exp:1, items:[
+    ['Esqueleto completo',{l:['hueso'],t:[-3,-30,-1],c:[78,-6,118]}],
+    ['Cintura pectoral',{l:['hueso'],t:[-5,1,-1],c:[14,16,34],sel:'escapula'}],
+    ['Húmero',{l:['hueso'],t:[1.5,-15,-2],c:[20,-8,34],sel:'humero'}],
+    ['Antebrazo',{l:['hueso'],t:[3,-44,-1],c:[16,-36,32],sel:'radio'}],
+    ['Carpo y mano',{l:['hueso'],t:[3.6,-64,-0.5],c:[10,-54,30],sel:'escafoides'}]]},
+  {exp:2, items:[
+    ['Hombro anterior',{l:['hueso','musculo'],t:[-4,0,1],c:[16,8,36],sel:'pectoral_mayor'}],
+    ['Hombro posterior',{l:['hueso','musculo'],t:[-5,-2,-5],c:[16,10,-34],sel:'trapecio'}],
+    ['Manguito rotador',{l:['hueso','musculo'],t:[-1,0,-3],c:[16,10,-26],sel:'supraespinoso',only:['supraespinoso','infraespinoso','redondo_menor','subescapular']}],
+    ['Brazo y codo',{l:['hueso','musculo'],t:[2,-20,0],c:[22,-14,32],sel:'biceps'}]]},
+  {exp:3, items:[
+    ['Plexo braquial',{l:['hueso','nervio','arteria'],g:true,t:[-6,2,-1],c:[6,14,34],sel:'plexo'}],
+    ['Nervios del brazo',{l:['hueso','nervio'],g:true,t:[1,-22,-1],c:[24,-14,30],sel:'radial'}],
+    ['Arterias',{l:['hueso','arteria'],g:true,t:[1,-30,0],c:[34,-20,52],sel:'braquial_a'}],
+    ['Antebrazo anterior',{l:['hueso','musculo'],t:[3,-46,0],c:[12,-40,30],sel:'flexor_superficial'}],
+    ['Antebrazo posterior',{l:['hueso','musculo'],t:[3,-46,-2],c:[14,-40,-28],sel:'extensor_dedos'}],
+    ['Palma y túnel carpiano',{l:['hueso','musculo','nervio'],g:true,t:[3.6,-62,0],c:[12,-52,34],sel:'mediano'}]]}
+];
+const toursEl=document.getElementById('tours'); let tourBtns=[];
+TOURS.forEach(tg=>{
+  const sp=SPEAKERS[tg.exp]; const box=document.createElement('div'); box.className='speaker';
+  box.innerHTML=`<div class="who"><i style="background:${sp.color}"></i>${sp.name}</div><div class="chips"></div>`;
+  tg.items.forEach(([n,cfg])=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=n; b.addEventListener('click',()=>{ tourBtns.forEach(x=>x.classList.remove('on')); b.classList.add('on'); runTour(cfg); }); box.querySelector('.chips').appendChild(b); tourBtns.push(b); });
+  toursEl.appendChild(box);
+});
+function runTour(cfg){ stopAll();
+  Object.keys(state.layers).forEach(k=>state.layers[k]=cfg.l.includes(k)); state.ghost=!!cfg.g; applyVis();
+  if(cfg.only){ Object.values(REG).filter(r=>r.layer==='musculo').forEach(r=>r.meshes.forEach(m=>m.visible=cfg.only.includes(r.id))); }
+  flyTo(cfg.t,cfg.c); select(cfg.sel||null,false);
+}
+
+/* ---------- Cámara ---------- */
+let fly=null;
+function flyTo(t,c){ fly={t0:controls.target.clone(),c0:camera.position.clone(),t1:V(t),c1:V(c),s:performance.now(),d:matchMedia('(prefers-reduced-motion: reduce)').matches?1:750}; }
+document.getElementById('reset').addEventListener('click',()=>{ stopAll(); tourBtns.forEach(x=>x.classList.remove('on')); state.layers={hueso:true,musculo:true,nervio:true,arteria:true,vena:false}; state.ghost=false; applyVis(); select(null); flyTo([-3,-30,-1],[78,-6,118]); });
+document.getElementById('ghost').addEventListener('click',()=>{state.ghost=!state.ghost; applyVis();});
+document.getElementById('ctx').addEventListener('click',()=>{state.ctx=!state.ctx; applyVis();});
+
+/* ---------- Selección ---------- */
+const ray=new THREE.Raycaster(), ptr=new THREE.Vector2(); let down=null, hovered=null;
+function pick(e){ const r=canvas.getBoundingClientRect(); ptr.set(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ptr,camera);
+  const hits=ray.intersectObjects(pickables.filter(m=>m.visible && !(m.material.transparent && m.material.opacity<0.5)),false); return hits[0]?hits[0].object.userData.id:null; }
+canvas.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY];});
+canvas.addEventListener('pointerup',e=>{ if(down && Math.hypot(e.clientX-down[0],e.clientY-down[1])<5){ const id=pick(e); select(id,false);} down=null; });
+canvas.addEventListener('pointermove',e=>{ if(e.pointerType!=='mouse') return; const id=pick(e); if(id!==hovered){ hovered=id; canvas.style.cursor=id?'pointer':'grab'; }});
+document.addEventListener('pointerdown',()=>{document.getElementById('hint').hidden=true;},{once:true});
+
+/* ---------- Movimientos ---------- */
+const cyc=u=>.5-.5*Math.cos(2*Math.PI*u);
+const sw=u=>Math.sin(2*Math.PI*u);
+const MOVES=[
+ {name:'Abducción del hombro', dur:4.6, key:'abd', view:{t:[28,-22,0],c:[30,-12,172]},
+  f:u=>[{abd:90*cyc(u)},0],
+  g:[{t:'Abducción',m:['deltoides','supraespinoso'],n:['axilar','supraescapular']}],
+  note:'En la glenohumeral la abducción no supera la horizontal sin que se mueva también la escápula: allí actúan el trapecio y, sobre todo, el serrato anterior.'},
+ {name:'Flexión del hombro', dur:4.6, key:'flex', view:{t:[1,-22,4],c:[124,-10,14]},
+  f:u=>[{flex:90*cyc(u)},0],
+  g:[{t:'Flexión (anteversión)',m:['deltoides','coracobraquial'],n:['axilar','musculocutaneo']}],
+  note:'El deltoides, según sus fascículos, lleva el brazo hacia adelante; el coracobraquial es aductor y anteversor del brazo.'},
+ {name:'Rotación del hombro', dur:5.2, key:'rot', view:{t:[2,-26,8],c:[34,48,96]},
+  f:u=>{ const s=sw(u); return [{elbow:90, rot:s>0?50*s:60*s}, s>=0?0:1]; },
+  g:[{t:'Rotación lateral',m:['infraespinoso','redondo_menor'],n:['supraescapular','axilar']},
+     {t:'Rotación medial',m:['subescapular','dorsal_ancho','pectoral_mayor','redondo_mayor'],n:['toracodorsal','pectorales']}],
+  note:'Con el codo en flexión, el antebrazo funciona como una aguja que muestra hacia dónde gira el húmero.'},
+ {name:'Flexión y extensión del codo', dur:4.4, key:'elbow', view:{t:[2,-34,6],c:[116,-26,16]},
+  f:u=>[{elbow:135*cyc(u)}, u<.5?0:1],
+  g:[{t:'Flexión',m:['braquial','biceps','braquiorradial'],n:['musculocutaneo','radial']},
+     {t:'Extensión',m:['triceps','anconeo'],n:['radial']}],
+  note:'El braquial es el flexor por excelencia, en pronación o en supinación. La flexoextensión tiene una amplitud de 135 a 140 grados.'},
+ {name:'Pronación y supinación', dur:4.8, key:'pron', view:{t:[3,-31,14],c:[48,-20,78]},
+  f:u=>[{elbow:90, pron:150*cyc(u)}, u<.5?0:1],
+  g:[{t:'Pronación',m:['pronador_redondo','pronador_cuadrado'],n:['mediano']},
+     {t:'Supinación',m:['supinador','biceps'],n:['radial','musculocutaneo']}],
+  note:'Es sobre todo una rotación del radio alrededor de la ulna, como una bandera alrededor de su asta.'},
+ {name:'Flexión y extensión de la muñeca', dur:4.6, key:'wrist', view:{t:[3,-57,0],c:[78,-50,14]},
+  f:u=>{ const s=sw(u); return [{wrist:s>0?70*s:60*s}, s>=0?0:1]; },
+  g:[{t:'Flexión',m:['flexor_radial','palmar_largo','flexor_ulnar'],n:['mediano','ulnar']},
+     {t:'Extensión',m:['erlc','ercc','extensor_ulnar'],n:['radial']}],
+  note:'El extensor radial corto del carpo es el extensor más directo de la mano.'},
+ {name:'Prensión (cerrar la mano)', dur:4.2, key:'ipL', view:{t:[3,-64,2],c:[62,-58,26]},
+  f:u=>{ const k=cyc(u); return [{mcpL:80*k,mcpM:85*k,ipL:95*k,ipM:100*k}, u<.5?0:1]; },
+  g:[{t:'Cierre de los dedos',m:['flexor_superficial','flexor_profundo','interoseos','tenar'],n:['mediano','ulnar']},
+     {t:'Apertura',m:['extensor_dedos','extensor_indice','extensor_menique'],n:['radial']}],
+  note:'Primero la mano se abre y luego se cierra sobre el objeto. El mediano comanda la oposición y la flexión; el ulnar, la aducción del pulgar y los movimientos laterales; el radial, la extensión y la posición de la mano.'}
+];
+
+/* ---------- Casos clínicos ---------- */
+const CASES=[
+ {name:'Mano caída', nerve:'radial', at:[2.5,-14,-3.7], view:{t:[2,-36,-1],c:[66,-18,58]},
+  pose:{wrist:68,mcpL:35,mcpM:35,ipL:20,ipM:20},
+  para:['braquiorradial','erlc','ercc','supinador','extensor_dedos','extensor_menique','extensor_ulnar','abductor_largo','extensor_corto_pulgar','extensor_largo_pulgar','extensor_indice'],
+  rows:[['Lesión','Nervio radial en el surco del nervio radial, por fractura de la diáfisis del húmero.'],
+        ['Resultado','Se paralizan los extensores de la muñeca y de los dedos: la mano cae en flexión.'],
+        ['Se conserva','La extensión del codo: los ramos del radial para el tríceps nacen antes de que el nervio entre al surco.']]},
+ {name:'Mano en garra', nerve:'ulnar', at:[1.4,-58,0.8], view:{t:[3,-64,0],c:[46,-58,42]},
+  pose:{mcpM:-25,ipM:85,ipL:12},
+  para:['hipotenar','interoseos'],
+  rows:[['Lesión','Nervio ulnar (cubital), aquí a nivel del canal de Guyon.'],
+        ['Resultado','Garra del anular y del meñique: falange proximal en extensión y las otras en flexión. Atrofia hipotenar e interósea y signo del diario (falla el aductor del pulgar).'],
+        ['Por qué no índice y medio','Sus lumbricales (1.º y 2.º) los inerva el nervio mediano.']]},
+ {name:'Túnel carpiano', nerve:'mediano', at:[3.4,-57.8,0.6], view:{t:[3.6,-61,0],c:[14,-52,40]},
+  pose:{}, para:['tenar'],
+  rows:[['Lesión','Nervio mediano comprimido bajo el retináculo flexor, dentro del túnel carpiano.'],
+        ['Resultado','Hormigueo en pulgar, índice, medio y mitad lateral del anular; pérdida de la oposición del pulgar y atrofia de la eminencia tenar.']]},
+ {name:'Lesión del nervio axilar', nerve:'axilar', at:[0.6,-4.2,-3.7], view:{t:[0,-4,-3],c:[34,10,-40]},
+  pose:{}, para:['deltoides','redondo_menor'],
+  rows:[['Causa','Luxación anterior del hombro o fractura del cuello quirúrgico del húmero.'],
+        ['Resultado','Pérdida de la abducción por parálisis del deltoides y anestesia de la cara lateral del hombro.']]},
+ {name:'Parálisis de Erb (C5–C6)', nerve:'plexo', at:[-11.5,8.6,-3.4], view:{t:[-2,-18,0],c:[44,4,104]},
+  pose:{rot:-55,pron:110,wrist:30,mcpL:20,mcpM:20,ipL:20,ipM:20},
+  para:['deltoides','supraespinoso','infraespinoso','redondo_menor','biceps','braquial','coracobraquial','braquiorradial','supinador'],
+  rows:[['Mecanismo','Caída que separa bruscamente el hombro de la cabeza (motociclista): lesión del tronco superior. C5 y C6 se acodan sobre su surco óseo y pueden lesionarse por tracción.'],
+        ['Postura','Brazo en aducción y rotación medial, codo extendido y antebrazo en pronación: “propina de mesero”.'],
+        ['Paralizados','Deltoides, supraespinoso, rotadores laterales y flexores del codo.']]}
+];
+
+/* ---------- Chips de movimientos y casos ---------- */
+function chipRow(el, items, cls, fn){
+  items.forEach(it=>{ const b=document.createElement('button'); b.type='button'; b.className='chip '+cls; b.textContent=it.name;
+    b.addEventListener('click',()=>{ const was=b.classList.contains('on'); tourBtns.forEach(x=>x.classList.remove('on')); if(was){ stopAll(); return; } b.classList.add('on'); fn(it); });
+    el.appendChild(b); tourBtns.push(b); });
+}
+chipRow(document.getElementById('moves'), MOVES, 'mv', startMove);
+chipRow(document.getElementById('cases'), CASES, 'cs', startCase);
+
+function showLayers(list){ Object.keys(state.layers).forEach(k=>state.layers[k]=list.includes(k)||(k==='arteria'&&state.flow)); state.ghost=false; }
+function startMove(M){
+  state.caseObj=null; state.poseTarget=fullPose({});
+  state.move={m:M, s:performance.now(), from:Object.assign({},state.pose)}; state.lastG=-1;
+  state.sel=null; state.iso=false; showLayers(['hueso','musculo','nervio']); applyVis();
+  flyTo(M.view.t,M.view.c); moveCard();
+}
+function startCase(C){
+  state.move=null; state.caseObj=C; state.poseTarget=fullPose(C.pose);
+  state.sel=null; state.iso=false; showLayers(['hueso','musculo','nervio']); applyVis();
+  flyTo(C.view.t,C.view.c); caseCard();
+}
+function stopAll(){
+  state.move=null; state.caseObj=null; state.poseTarget=fullPose({});
+  if(state.cardMode!=='item'){ card.hidden=true; state.cardMode=null; }
+  document.querySelectorAll('.chip.mv.on,.chip.cs.on').forEach(x=>x.classList.remove('on'));
+  applyMaterials();
+}
+const nm=id=>REG[id].name;
+function moveCard(){
+  const M=state.move.m; state.cardMode='move'; state.lastG=-1;
+  card.innerHTML=`<button class="x" type="button" aria-label="Detener">×</button>
+    <div class="tag" style="color:var(--nerve)"><span class="dot" style="background:var(--nerve)"></span>Movimiento</div>
+    <h2>${M.name}</h2><div class="meter" id="meter"></div>
+    <dl>${M.g.map((g,i)=>`<div class="grp" data-g="${i}"><dt>${g.t}</dt><dd><b>Músculos:</b> ${g.m.map(nm).join(', ')}.<br><b>Inervación:</b> ${g.n.map(nm).join(', ')}.</dd></div>`).join('')}
+    ${M.note?`<div class="clin" style="border-color:var(--nerve)"><dt>Dato clave</dt><dd>${M.note}</dd></div>`:''}</dl>
+    <div class="acts"><button class="mini" type="button" id="stop">Detener</button></div>`;
+  card.querySelector('.x').addEventListener('click',stopAll); card.querySelector('#stop').addEventListener('click',stopAll);
+  card.hidden=false;
+}
+function caseCard(){
+  const C=state.caseObj; state.cardMode='case';
+  card.innerHTML=`<button class="x" type="button" aria-label="Cerrar caso">×</button>
+    <div class="tag" style="color:var(--artery)"><span class="dot" style="background:var(--artery)"></span>Caso clínico</div>
+    <h2>${C.name}</h2>
+    <dl>${C.rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
+    <div class="clin" style="border-color:#5F676E"><dt>En gris en el modelo</dt><dd>${C.para.map(nm).join(', ')}.</dd></div></dl>
+    <div class="acts"><button class="mini" type="button" id="stop">Volver a posición anatómica</button></div>`;
+  card.querySelector('.x').addEventListener('click',stopAll); card.querySelector('#stop').addEventListener('click',stopAll);
+  card.hidden=false;
+}
+
+/* ---------- Pulsos: flujo sanguíneo e impulsos nerviosos ---------- */
+const pulses=[], pg=new THREE.SphereGeometry(1,10,8);
+const pmk=c=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false});
+const PM={arteria:pmk(0xffd2c4), nervio:pmk(0xfff3a8), vena:pmk(0xbcd4ff), musculo:pmk(0xffffff), hueso:pmk(0xffffff)};
+const curvesOf=id=>REG[id].meshes.map(m=>m.geometry.userData.curve?{c:m.geometry.userData.curve,r:m.geometry.userData.r}:null).filter(Boolean);
+function spawn(id,delay,speed,now){
+  const r=REG[id];
+  curvesOf(id).forEach(({c,r:rad})=>{ const m=new THREE.Mesh(pg,PM[r.layer]); m.scale.setScalar(Math.max(0.32,rad*1.55)); m.visible=false; root.add(m);
+    pulses.push({m,c,len:c.getLength(),s:now+delay*1000,speed,layer:r.layer}); });
+}
+const _cv=new THREE.Vector3();
+function updatePulses(now){
+  for(let i=pulses.length-1;i>=0;i--){ const p=pulses[i], t=(now-p.s)/1000*p.speed/p.len;
+    if(t>1){ root.remove(p.m); pulses.splice(i,1); continue; }
+    if(t<0||!state.layers[p.layer]){ p.m.visible=false; continue; }
+    p.m.visible=true; deformPoint(p.c.getPointAt(t,_cv),p.m.position); }
+}
+const LEN=id=>curvesOf(id)[0].c.getLength();
+const oSub=0, oAx=LEN('subclavia'), oBr=oAx+LEN('axilar_a'), oFa=oBr+LEN('braquial_a');
+const ARTOFF={subclavia:oSub, axilar_a:oAx, braquial_a:oBr, radial_a:oFa, ulnar_a:oFa, braquial_profunda:oBr+1.5, circunflejas:oAx+LEN('axilar_a')*0.6};
+function beat(now){
+  Object.entries(ARTOFF).forEach(([id,o])=>spawn(id,o/30,30,now));
+  if(state.layers.vena) ['cefalica','basilica','mediana_codo'].forEach(id=>spawn(id,0,18,now));
+}
+
+/* ---------- Lesión ---------- */
+const lesion=new THREE.Mesh(new THREE.SphereGeometry(1,18,14), new THREE.MeshBasicMaterial({color:0xff3b30,transparent:true,opacity:.9,depthTest:false}));
+lesion.renderOrder=999; lesion.visible=false; root.add(lesion);
+
+/* ---------- Armado inicial ---------- */
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const BUILD={on:!reduced, s:0}; const buildList=[];
+['hueso','musculo','nervio','arteria','vena'].forEach((L,li)=>{
+  const es=Object.values(REG).filter(r=>r.layer===L);
+  es.forEach((r,i)=>r.meshes.forEach(m=>{ const g=m.geometry; buildList.push({g, n:g.index?g.index.count:g.attributes.position.count, st:[0,1.1,2.2,2.9,2.9][li]+i/es.length*0.9}); }));
+});
+function updateBuild(now){
+  if(!BUILD.on) return; if(!BUILD.s) BUILD.s=now;
+  const el=(now-BUILD.s)/1000; let done=true;
+  for(const b of buildList){ const k=Math.max(0,Math.min(1,(el-b.st)/0.75)); if(k<1) done=false; b.g.setDrawRange(0, k>=1?Infinity:Math.floor(k*b.n/3)*3); }
+  if(done) BUILD.on=false;
+}
+document.getElementById('build').addEventListener('click',()=>{ if(reduced) return; BUILD.on=true; BUILD.s=0; });
+document.getElementById('spin').addEventListener('click',e=>{ state.spin=!state.spin; controls.autoRotate=state.spin; e.currentTarget.classList.toggle('on',state.spin); });
+document.getElementById('flow').addEventListener('click',e=>{ state.flow=!state.flow; e.currentTarget.classList.toggle('on',state.flow); if(state.flow && !state.layers.arteria){ state.layers.arteria=true; applyVis(); } });
+controls.autoRotateSpeed=1.4;
+
+/* ---------- Tick ---------- */
+let lastT=0, lastBeat=0, lastImp=0;
+function updateEmissive(now){
+  const k=0.5+0.5*Math.sin(now/170), les=state.caseObj&&state.caseObj.nerve;
+  for(const id in REG){ const r=REG[id], e=r.mat.emissive;
+    if(les===id){ e.setRGB(0.55*k,0.04,0.02); continue; }
+    if(state.hl && state.hl.has(id)){ const v=0.16+0.34*k; e.setRGB(v,v*0.6,v*0.25); continue; }
+    const v=state.sel===id?0.23:hovered===id?0.11:0; e.setRGB(v,v,v);
+  }
+}
+function tick(now){
+  const dt=Math.min(0.05,(now-(lastT||now))/1000); lastT=now;
+  updateBuild(now);
+  let P={};
+  if(state.move){
+    const M=state.move.m, el=(now-state.move.s)/1000, [mp,gi]=M.f((el/M.dur)%1), full=fullPose(mp);
+    let b=Math.min(1,el/0.7); b=b*b*(3-2*b);
+    for(const k of PK) P[k]=state.move.from[k]+(full[k]-state.move.from[k])*b;
+    state.gIdx=gi; state.hl=new Set([...M.g[gi].m,...M.g[gi].n]); state.impNerves=M.g[gi].n;
+  } else {
+    const T=state.poseTarget, f=1-Math.exp(-dt*5);
+    for(const k of PK){ P[k]=state.pose[k]+(T[k]-state.pose[k])*f; if(Math.abs(T[k]-P[k])<0.02) P[k]=T[k]; }
+    state.hl=null; state.impNerves=null;
+  }
+  let ch=false; for(const k of PK) if(P[k]!==state.pose[k]){ ch=true; break; }
+  if(ch){ state.pose=P; applyPoseAll(P); }
+  if(state.move && state.cardMode==='move'){
+    const M=state.move.m, g=M.g[state.gIdx], txt=`${g.t} · ${Math.round(Math.abs(state.pose[M.key]))}°`, me=document.getElementById('meter');
+    if(me && me.textContent!==txt) me.textContent=txt;
+    if(state.lastG!==state.gIdx){ state.lastG=state.gIdx; card.querySelectorAll('.grp').forEach(e=>e.classList.toggle('on',+e.dataset.g===state.gIdx)); }
+  }
+  updateEmissive(now);
+  if(state.flow && now-lastBeat>850){ lastBeat=now; beat(now); }
+  const imp=new Set(state.impNerves||[]); if(state.sel && REG[state.sel].layer==='nervio') imp.add(state.sel);
+  if(imp.size && now-lastImp>520){ lastImp=now; imp.forEach(id=>spawn(id,0,42,now)); }
+  updatePulses(now);
+  if(state.caseObj){ lesion.visible=true; deformPoint(V(state.caseObj.at),lesion.position); lesion.scale.setScalar(0.75+0.3*Math.sin(now/150)); } else lesion.visible=false;
+}
+
+/* ---------- Loop ---------- */
+function resize(){ const w=stage.clientWidth, h=stage.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(stage);
+const pv=new THREE.Vector3();
+function updateLabel(){
+  let txt=null;
+  if(state.sel){ const r=REG[state.sel]; if(r.meshes[0].visible){ deformPoint(r.center,pv); txt=r.name; } }
+  else if(state.caseObj){ deformPoint(V(state.caseObj.at),pv); txt='Lesión · '+REG[state.caseObj.nerve].name; }
+  if(!txt){ label.hidden=true; return; }
+  pv.project(camera); if(pv.z>1){ label.hidden=true; return; }
+  label.hidden=false; if(label.textContent!==txt) label.textContent=txt;
+  label.style.left=((pv.x+1)/2*stage.clientWidth)+'px'; label.style.top=((1-pv.y)/2*stage.clientHeight)+'px';
+}
+function loop(now){
+  requestAnimationFrame(loop);
+  if(fly){ let k=Math.min(1,(now-fly.s)/fly.d); k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; controls.target.lerpVectors(fly.t0,fly.t1,k); camera.position.lerpVectors(fly.c0,fly.c1,k); if(k>=1) fly=null; }
+  tick(now); controls.update(); renderer.render(scene,camera); updateLabel();
+}
+camera.position.set(78,-6,118); controls.target.set(-3,-30,-1);
+applyVis(); resize(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

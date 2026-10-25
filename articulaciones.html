@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Articulaciones 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#0E1820; --panel:#132230; --panel-2:#192C3B; --line:#26394A;
+  --fg:#E7EEF2; --muted:#93A8B6; --accent:#62D2C4;
+  --bone:#E9DFC9; --cart:#62D2C4; --lig:#B9A6E8; --axis:#F1C24B; --warn:#E2483B;
+  --display:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',Arial,sans-serif;
+  --mono:'IBM Plex Mono',Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:340px 1fr;height:100%}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:16px;overflow-y:auto;padding:18px 16px 14px max(16px,env(safe-area-inset-left,0px))}
+aside>*{flex:none}
+h1{font-family:var(--display);font-weight:700;font-size:25px;line-height:1.05;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:12.5px;line-height:1.45;margin:6px 0 0}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+button{font:inherit;color:inherit;cursor:pointer}
+.grp{margin-bottom:10px}
+.grp h4{font-size:12.5px;font-weight:600;margin:0 0 6px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12.5px}
+.chip:hover,.chip:focus-visible{border-color:var(--accent);outline:none}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#0E1820}
+.info{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px}
+.info .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.info h2{font-family:var(--display);font-size:22px;margin:4px 0 4px;line-height:1.1}
+.info .tipo{font-size:13px;color:var(--fg);background:rgba(98,210,196,.12);border-left:3px solid var(--accent);padding:6px 9px;border-radius:0 6px 6px 0;margin:6px 0 10px}
+.info dl{margin:0;display:grid;gap:9px}
+.info dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.info dd{margin:2px 0 0;line-height:1.45;font-size:13.5px}
+.info .clin{border-left:3px solid var(--warn);padding-left:10px}
+.info .dato{border-left:3px solid var(--axis);padding-left:10px}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12.5px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:7px}
+.dot{width:10px;height:10px;border-radius:3px;flex:none;display:inline-block}
+.note{font-size:11.5px;color:var(--muted);line-height:1.4;margin:0}
+.stage{position:relative;min-width:0;min-height:0}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.tools{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 24px)}
+.tool{background:rgba(19,34,48,.85);border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:12.5px;backdrop-filter:blur(6px)}
+.tool:hover,.tool:focus-visible{border-color:var(--accent);outline:none}
+.tool.on{border-color:var(--accent);color:var(--accent)}
+.dock{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(640px,calc(100% - 24px));box-sizing:border-box;background:rgba(19,34,48,.94);border:1px solid var(--line);border-radius:14px;padding:12px 14px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:10px}
+.dock .mvs{display:flex;flex-wrap:wrap;gap:6px}
+.dock .mv{background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px}
+.dock .mv.on{background:var(--axis);border-color:var(--axis);color:#0E1820;font-weight:600}
+.ctrl{display:flex;align-items:center;gap:12px}
+.play{width:38px;height:38px;border-radius:50%;background:var(--accent);border:0;color:#0E1820;font-size:15px;flex:none;display:grid;place-items:center}
+.play:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+input[type=range]{flex:1;accent-color:var(--axis);min-width:80px}
+.meter{font-family:var(--mono);font-size:13px;min-width:150px;text-align:right;color:var(--axis);white-space:nowrap}
+.mus{font-size:13px;line-height:1.45;color:var(--fg);min-height:1.45em}
+.mus b{color:var(--muted);font-weight:500}
+.label3d{position:absolute;pointer-events:none;transform:translate(-50%,-150%);background:rgba(14,24,32,.82);border:1px solid var(--accent);color:var(--fg);font-size:11.5px;padding:3px 8px;border-radius:6px;white-space:nowrap}
+.hint{position:absolute;left:14px;top:14px;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;pointer-events:none}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;grid-template-rows:60% 40%}
+  aside{order:2;border-right:0;border-top:1px solid var(--line);padding-top:14px}
+  .stage{order:1}
+  h1{font-size:21px}
+  .tool{padding:6px 9px;font-size:12px}
+  .dock{padding:10px 11px;gap:8px}
+  .dock .mv{padding:5px 10px;font-size:12px}
+  .meter{min-width:0;font-size:12px}
+  .mus{font-size:12px}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside>
+    <div>
+      <p class="eyebrow">Anatomía Virtual · Unidad 5</p>
+      <h1>Articulaciones del miembro superior</h1>
+      <p class="sub">Elige una articulación y luego un movimiento: el modelo lo anima, muestra el eje (amarillo), las superficies articulares (turquesa) y los ligamentos (violeta).</p>
+    </div>
+    <div class="info" id="info" hidden></div>
+    <section>
+      <p class="eyebrow">Articulaciones</p>
+      <div id="joints"></div>
+    </section>
+    <section>
+      <p class="eyebrow">Colores</p>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--bone)"></i>Hueso</span>
+        <span><i class="dot" style="background:var(--cart)"></i>Superficie articular</span>
+        <span><i class="dot" style="background:var(--lig)"></i>Ligamento</span>
+        <span><i class="dot" style="background:var(--axis)"></i>Eje del movimiento</span>
+      </div>
+    </section>
+    <p class="note">Modelo esquemático: formas simplificadas y ángulos del modelo aproximados. Las amplitudes citadas en las fichas son las del Latarjet.</p>
+  </aside>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Modelo 3D de las articulaciones del miembro superior"></canvas>
+    <div class="hint" id="hint">TOCA UN PUNTO TURQUESA O ELIGE UNA ARTICULACIÓN</div>
+    <div class="tools">
+      <a class="tool" href="./" style="text-decoration:none;color:inherit">← Menú</a>
+      <a class="tool" href="miembro-superior.html" style="text-decoration:none;color:var(--accent);border-color:var(--accent)">Ver músculos, nervios y vasos →</a>
+      <button class="tool on" id="focus" type="button">Atenuar el resto</button>
+      <button class="tool on" id="ligs" type="button">Ligamentos</button>
+      <button class="tool" id="spin" type="button">Girar solo</button>
+      <button class="tool" id="all" type="button">Vista completa</button>
+    </div>
+    <div id="labels"></div>
+    <div class="dock" id="dock" hidden>
+      <div class="mvs" id="mvs"></div>
+      <div class="ctrl">
+        <button class="play" id="play" type="button" aria-label="Pausar">❚❚</button>
+        <input type="range" id="sl" min="-1" max="1" step="0.001" value="0" aria-label="Control manual del movimiento">
+        <div class="meter" id="meter"></div>
+      </div>
+      <div class="mus" id="mus"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const css=getComputedStyle(document.documentElement), tok=n=>css.getPropertyValue(n).trim();
+const C={bone:new THREE.Color(tok('--bone')), cart:new THREE.Color(tok('--cart')), lig:new THREE.Color(tok('--lig')), axis:new THREE.Color(tok('--axis'))};
+const D2R=Math.PI/180, V=a=>new THREE.Vector3(a[0],a[1],a[2]);
+const X=new THREE.Vector3(1,0,0), Y=new THREE.Vector3(0,1,0), Z=new THREE.Vector3(0,0,1);
+
+/* ---------- Escena ---------- */
+const canvas=document.getElementById('c'), stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setClearColor(new THREE.Color(tok('--bg')));
+const scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(38,1,0.1,600);
+const controls=new THREE.OrbitControls(camera,canvas); controls.enableDamping=true; controls.dampingFactor=.08; controls.minDistance=6; controls.maxDistance=260; controls.autoRotateSpeed=1.3;
+scene.add(new THREE.HemisphereLight(0xdfe9f2,0x2a2018,.8));
+const L1=new THREE.DirectionalLight(0xffffff,.85); L1.position.set(40,30,50); scene.add(L1);
+const L2=new THREE.DirectionalLight(0x9fb8ff,.35); L2.position.set(-40,10,-40); scene.add(L2);
+const root=new THREE.Group(); scene.add(root);
+
+function tube(pts,r){ const c=new THREE.CatmullRomCurve3(pts.map(V),false,'centripetal'); return new THREE.TubeGeometry(c,Math.max(16,Math.round(c.getLength()*2.2)),r,12,false); }
+function ball(c,s){ const g=new THREE.SphereGeometry(1,22,16); g.scale(s[0],s[1],s[2]); g.translate(c[0],c[1],c[2]); return g; }
+function prism(pts,th){ const [a,b,c]=pts.map(V); const n=new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)).normalize().multiplyScalar(th/2);
+  const P=[a,b,c].map(p=>p.clone().add(n)), Q=[a,b,c].map(p=>p.clone().sub(n)); const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute([...P,...Q].flatMap(p=>[p.x,p.y,p.z]),3)); g.setIndex([0,1,2,5,4,3,0,3,4,0,4,1,1,4,5,1,5,2,2,5,3,2,3,0]); g.computeVertexNormals(); return g; }
+
+/* ---------- Jerarquía (pivotes en coordenadas de reposo) ---------- */
+const N={}, PIV={};
+function node(name,parent,pv){ const g=new THREE.Group(), pp=parent?PIV[parent]:[0,0,0]; g.position.set(pv[0]-pp[0],pv[1]-pp[1],pv[2]-pp[2]); (parent?N[parent]:root).add(g); N[name]=g; PIV[name]=pv; return g; }
+const P_CC=[-12.8,4.9,6.3], P_AC=[2.2,5.2,-1.9], P_GH=[0.8,0,-2.8], P_EL=[2,-30.6,-1.7], P_CAP=[3.4,-31.2,-1.2], P_RC=[3.5,-58.7,-1.0], P_CMC1=[6.75,-60.4,-0.1];
+node('thorax',null,[0,0,0]); node('clav','thorax',P_CC); node('scap','clav',P_AC); node('hum','scap',P_GH);
+node('ulna','hum',P_EL); node('radius','ulna',P_CAP); node('carp','radius',P_RC);
+node('mc1','carp',P_CMC1); node('tp1','mc1',[8.75,-64.6,1.7]); node('tp2','tp1',[9.8,-68,2.6]);
+const MCH=[[5.4,-67,-0.9],[3.6,-67.4,-1.0],[1.9,-67,-1.0],[0.4,-66.2,-0.9]];
+const FING=[[[5.5,-67.6,-0.9],[5.8,-71.6,-0.9],[5.9,-74,-0.9],[6,-75.8,-0.9]],[[3.6,-68,-1],[3.6,-72.6,-1],[3.6,-75.4,-1],[3.6,-77.3,-1]],[[1.8,-67.6,-1],[1.6,-71.8,-1],[1.5,-74.4,-1],[1.4,-76.2,-1]],[[0.3,-66.8,-0.9],[0,-70,-0.9],[-0.1,-72,-0.9],[-0.2,-73.6,-0.9]]];
+FING.forEach((f,i)=>{ node('f'+i+'a','carp',MCH[i]); node('f'+i+'b','f'+i+'a',f[1]); node('f'+i+'c','f'+i+'b',f[2]); });
+const region=n=>n.startsWith('f')?'fing':(['mc1','tp1','tp2'].includes(n)?'thumb':n);
+
+/* ---------- Huesos ---------- */
+const BONES=[];
+function bone(nodeName,geos,surf){ const mat=new THREE.MeshStandardMaterial({color:C.bone.clone(),roughness:.65,metalness:.02});
+  const pv=PIV[nodeName]; const meshes=geos.map(g=>{ const m=new THREE.Mesh(g,mat); m.position.set(-pv[0],-pv[1],-pv[2]); N[nodeName].add(m); return m; });
+  BONES.push({meshes,mat,node:nodeName,region:region(nodeName),surf:surf||[]}); }
+// Tórax (contexto)
+const ctxMat=new THREE.MeshBasicMaterial({color:0x8FA5B3,transparent:true,opacity:.13,depthWrite:false});
+for(let i=0;i<9;i++){ const y=7-i*3.1, rx=11.5+Math.sin(i/8*Math.PI)*1.2; const g=new THREE.TorusGeometry(1,.035,6,48,Math.PI*1.25); g.scale(rx,7.2,1); g.rotateX(Math.PI/2); g.rotateY(Math.PI*.62); g.translate(-16,y,-1); N.thorax.add(new THREE.Mesh(g,ctxMat)); }
+{ const g=new THREE.CylinderGeometry(.9,.9,46,12); g.translate(-16,-8,-8.6); N.thorax.add(new THREE.Mesh(g,ctxMat)); }
+bone('thorax',[(()=>{const g=new THREE.BoxGeometry(2.6,20,.9); g.translate(-16.4,-4.6,7.1); return g;})()]);
+bone('thorax',[tube([[-15.6,4.0,6.9],[-14,3.7,6.6],[-12.2,3.5,5.7]],.42)]);
+bone('thorax',[ball([-15.25,5.3,6.6],[.45,.65,.6])],['ec']);
+bone('thorax',[(()=>{const g=new THREE.CylinderGeometry(.62,.62,.16,18); g.rotateZ(Math.PI/2); g.translate(-14.95,5.35,6.3); return g;})()],['ec']);
+// Clavícula
+bone('clav',[tube([[-14.5,5.4,6],[-10,6,7],[-4,6.2,4],[0,5.8,0],[2,5.2,-1.6]],.55)]);
+bone('clav',[ball([-14.55,5.4,6],[.85,.8,.8])],['ec']);
+bone('clav',[ball([2,5.2,-1.6],[.8,.45,.8])],['ac']);
+// Escápula
+bone('scap',[prism([[-9,5,-6.9],[-8,-15,-6.9],[-1.6,0,-4.4]],.45), tube([[-9,1.2,-7.5],[-4,3.4,-6.6],[0,4.6,-5.4],[2.6,5,-2.6]],.5), tube([[-1.6,3,-3.4],[-0.6,4,-1.4],[0.5,2.6,1.2]],.42)]);
+bone('scap',[ball([2.7,5.1,-2.4],[1.35,.35,1.15])],['ac']);
+bone('scap',[ball([-0.75,0,-3.7],[.35,1.3,.9])],['gh']);
+bone('scap',[(()=>{const g=new THREE.TorusGeometry(1,.13,8,32); g.scale(.95,1.35,1); g.rotateY(Math.PI/2); g.translate(-0.45,0,-3.65); return g;})()],['gh']);
+// Húmero
+bone('hum',[ball([0.8,0,-2.8],[2.1,2.1,2.1])],['gh']);
+bone('hum',[ball([2.9,0.7,-2.2],[.9,1,.9]), ball([1.7,0,-0.8],[.6,.7,.6]), tube([[2.1,-2,-2.4],[2.2,-15,-2.1],[2.2,-28,-1.8]],.95), ball([-1.1,-30.2,-1.8],[.9,.7,.7]), ball([5.1,-30.2,-1.8],[.7,.6,.6])]);
+bone('hum',[tube([[-0.4,-30.6,-1.7],[2,-30.9,-1.6],[4.4,-30.6,-1.7]],.85), ball([0.8,-31.2,-1.5],[1.1,.8,.9]), ball([3.4,-31.2,-1.2],[.8,.8,.8])],['codo']);
+// Ulna
+bone('ulna',[ball([0.6,-29.6,-3],[.9,1.4,.9]), tube([[0.7,-30.6,-2.6],[0.7,-33,-2.0],[0.5,-45,-1.6],[0.6,-55.2,-1.4]],.55), ball([0.2,-56.6,-1.8],[.25,.6,.25])]);
+bone('ulna',[ball([0.6,-55.7,-1.4],[.65,.6,.65])],['ru']);
+// Radio
+bone('radius',[tube([[3.7,-32.4,-1.4],[3.8,-34,-1.3],[4.6,-45,-1.0],[5.0,-55,-1.0]],.55), ball([6.2,-57,-0.9],[.3,.6,.3])]);
+bone('radius',[ball([3.6,-32,-1.4],[.95,.5,.95])],['ru','codo']);
+bone('radius',[ball([5.0,-56,-1.0],[1.35,.9,1.05])],['rc']);
+bone('radius',[ball([1.5,-56.8,-1.3],[.9,.18,.7])],['ru','rc']);
+// Carpo y metacarpianos 2–5
+[[5.4,-57.7,-0.8,.75,.55,.6,'rc'],[3.9,-57.5,-1.0,.65,.55,.6,'rc'],[2.4,-57.7,-1.2,.6,.5,.55,'rc'],[1.9,-57.9,0.4,.42,.42,.42],[6.3,-59.7,-0.4,.62,.55,.6,'cmc1'],[4.9,-59.7,-0.8,.5,.5,.5],[3.5,-59.5,-1.0,.62,.8,.62],[2.0,-59.6,-1.0,.6,.6,.6]]
+ .forEach(([x,y,z,a,b,c,s])=>bone('carp',[ball([x,y,z],[a,b,c])],s?[s]:[]));
+const MCB=[[4.8,-60.6,-0.9],[3.4,-60.6,-1.0],[2.1,-60.6,-1.0],[0.9,-60.6,-0.9]];
+MCB.forEach((b,i)=>{ bone('carp',[tube([b,MCH[i]],.38)]); bone('carp',[ball(MCH[i],[.5,.5,.5])],['mcf']); });
+// Pulgar
+bone('mc1',[tube([[6.9,-60.5,0],[8.7,-64.4,1.6]],.4)]); bone('mc1',[ball([6.95,-60.6,0.05],[.5,.45,.5])],['cmc1']); bone('mc1',[ball([8.7,-64.4,1.6],[.5,.5,.5])],['mcf']);
+bone('tp1',[tube([[8.8,-64.8,1.8],[9.8,-68,2.6]],.34)]); bone('tp1',[ball([9.8,-68,2.6],[.38,.38,.38])],['if']);
+bone('tp2',[tube([[9.8,-68,2.6],[10.3,-70.4,3.0]],.32), ball([10.3,-70.5,3.0],[.33,.33,.33])]);
+// Dedos 2–5
+FING.forEach((f,i)=>{ bone('f'+i+'a',[tube([f[0],f[1]],.33)]); bone('f'+i+'a',[ball(f[1],[.37,.37,.37])],['if']);
+  bone('f'+i+'b',[tube([f[1],f[2]],.31)]); bone('f'+i+'b',[ball(f[2],[.35,.35,.35])],['if']);
+  bone('f'+i+'c',[tube([f[2],f[3]],.29), ball(f[3],[.3,.3,.3])]); });
+
+/* ---------- Ligamentos (se estiran entre dos huesos) ---------- */
+const LIGS=[], ligGeo=new THREE.CylinderGeometry(1,1,1,8,1,true);
+function lig(j,na,pa,nb,pb,r){ const mat=new THREE.MeshStandardMaterial({color:C.lig.clone(),roughness:.5,transparent:true,opacity:.9});
+  const m=new THREE.Mesh(ligGeo,mat); root.add(m); const la=PIV[na], lb=PIV[nb];
+  LIGS.push({j,mat,m,r:r||.18,a:{n:na,p:new THREE.Vector3(pa[0]-la[0],pa[1]-la[1],pa[2]-la[2])},b:{n:nb,p:new THREE.Vector3(pb[0]-lb[0],pb[1]-lb[1],pb[2]-lb[2])}}); }
+// Esternoclavicular
+lig('ec','clav',[-12.8,4.4,6.4],'thorax',[-12.8,3.75,6.1],.32);
+lig('ec','clav',[-14.2,5.7,6.8],'thorax',[-15.8,5.0,7.4],.16);
+lig('ec','clav',[-14.4,5.2,5.3],'thorax',[-15.9,4.9,6.4],.14);
+lig('ec','clav',[-14.6,6.0,6.1],'thorax',[-16.6,6.1,6.6],.13);
+// Acromioclavicular y coracoclaviculares
+lig('ac','clav',[1.6,5.6,-1.2],'scap',[2.9,5.4,-2.3],.17);
+lig('ac','clav',[1.7,4.8,-1.3],'scap',[2.8,4.8,-2.2],.13);
+lig('ac','clav',[0.1,5.3,-0.3],'scap',[-0.4,3.8,-1.1],.22);
+lig('ac','clav',[-2.0,5.6,1.9],'scap',[-1.2,3.6,-2.5],.24);
+lig('ac','scap',[0.4,2.7,0.9],'scap',[2.6,5.0,-1.5],.15);
+// Glenohumeral
+lig('gh','scap',[0.3,2.8,0.4],'hum',[2.5,1.0,-1.4],.2);
+lig('gh','scap',[-0.4,1.1,-2.9],'hum',[1.3,1.0,-0.9],.13);
+lig('gh','scap',[-0.4,0,-2.85],'hum',[1.5,-0.4,-0.8],.13);
+lig('gh','scap',[-0.4,-1.1,-2.95],'hum',[1.0,-1.9,-1.2],.15);
+// Codo
+lig('codo','hum',[-1.2,-30.5,-1.8],'ulna',[0.1,-32.8,-2.0],.26);
+lig('codo','hum',[5.2,-30.5,-1.8],'ulna',[4.4,-32.3,-1.9],.22);
+// Radioulnares: membrana interósea
+for(let i=0;i<6;i++){ const t=.12+i*.13, ra=V([3.8,-34,-1.3]).lerp(V([5,-55,-1.0]),t), ua=V([0.7,-33,-2.0]).lerp(V([0.5,-55,-1.5]),Math.min(.95,t+.12)); lig('ru','radius',ra.toArray(),'ulna',ua.toArray(),.07); }
+// Radiocarpiana
+lig('rc','radius',[6.3,-57.5,-0.9],'carp',[6.0,-58.2,-0.8],.15);
+lig('rc','ulna',[0.2,-57.1,-1.8],'carp',[2.0,-58.0,-1.1],.15);
+lig('rc','radius',[4.6,-56.9,0],'carp',[3.6,-59.0,-0.4],.14);
+lig('rc','radius',[4.4,-56.9,-2.0],'carp',[3.0,-58.4,-1.6],.14);
+// CMC del pulgar
+lig('cmc1','carp',[6.7,-60.0,0.2],'mc1',[7.2,-60.9,0.4],.12); lig('cmc1','carp',[6.1,-60.1,-0.6],'mc1',[6.8,-61.0,-0.3],.12);
+// MCF y IF: colaterales
+MCH.forEach((h,i)=>{ const f=FING[i]; lig('mcf','carp',[h[0]+.45,h[1],h[2]],'f'+i+'a',[f[0][0]+.34,f[0][1]-.5,f[0][2]],.08); lig('mcf','carp',[h[0]-.45,h[1],h[2]],'f'+i+'a',[f[0][0]-.34,f[0][1]-.5,f[0][2]],.08);
+  lig('if','f'+i+'a',[f[1][0]+.33,f[1][1]+.3,f[1][2]],'f'+i+'b',[f[1][0]+.31,f[1][1]-.4,f[1][2]],.07); lig('if','f'+i+'a',[f[1][0]-.33,f[1][1]+.3,f[1][2]],'f'+i+'b',[f[1][0]-.31,f[1][1]-.4,f[1][2]],.07); });
+// Ligamento anular (anillo en la ulna alrededor de la cabeza del radio)
+{ const g=new THREE.TorusGeometry(1.08,.17,8,32); g.rotateX(Math.PI/2); g.translate(3.6-PIV.ulna[0],-32-PIV.ulna[1],-1.4-PIV.ulna[2]);
+  const mat=new THREE.MeshStandardMaterial({color:C.lig.clone(),roughness:.5,transparent:true,opacity:.9}); const m=new THREE.Mesh(g,mat); N.ulna.add(m); LIGS.push({j:'ru',mat,m,ring:true}); }
+const _a=new THREE.Vector3(), _b=new THREE.Vector3(), _d=new THREE.Vector3();
+function updateLigs(){ for(const l of LIGS){ if(l.ring) continue; N[l.a.n].localToWorld(_a.copy(l.a.p)); N[l.b.n].localToWorld(_b.copy(l.b.p));
+  root.worldToLocal(_a); root.worldToLocal(_b); _d.subVectors(_b,_a); const len=_d.length();
+  l.m.position.addVectors(_a,_b).multiplyScalar(.5); l.m.quaternion.setFromUnitVectors(Y,_d.normalize()); l.m.scale.set(l.r,len,l.r); } }
+
+/* ---------- Eje del movimiento ---------- */
+const axisG=new THREE.Group(); root.add(axisG); axisG.visible=false;
+const axMat=new THREE.MeshBasicMaterial({color:C.axis,transparent:true,opacity:.95,depthTest:false});
+const axRod=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,1,10),axMat), axC1=new THREE.Mesh(new THREE.ConeGeometry(.32,.9,14),axMat), axC2=axC1.clone();
+[axRod,axC1,axC2].forEach(m=>{m.renderOrder=998; axisG.add(m);});
+function setAxis(spec){ if(!spec){ axisG.visible=false; return; } axisG.visible=true; axisG.userData=spec; }
+const _q=new THREE.Quaternion();
+function updateAxis(){ const s=axisG.userData; if(!axisG.visible||!s) return; const nd=N[s.n], pv=PIV[s.n];
+  nd.localToWorld(_a.set(s.at[0]-pv[0],s.at[1]-pv[1],s.at[2]-pv[2])); root.worldToLocal(_a);
+  nd.getWorldQuaternion(_q); _d.copy(s.dir).normalize().applyQuaternion(_q);
+  const L=s.len||9; axisG.position.copy(_a); axisG.quaternion.setFromUnitVectors(Y,_d);
+  axRod.scale.set(1,L,1); axC1.position.set(0,L/2,0); axC2.position.set(0,-L/2,0); axC2.rotation.set(Math.PI,0,0); }
+
+/* ---------- Puntos de referencia del codo ---------- */
+const hueter={g:new THREE.Group(),pts:[{n:'hum',p:[-1.45,-30.2,-1.9]},{n:'hum',p:[5.45,-30.2,-1.9]},{n:'ulna',p:[2.0,-30.25,-3.55]}],segs:[]};
+root.add(hueter.g); hueter.g.visible=false;
+const hMat=new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false}), hLine=new THREE.MeshBasicMaterial({color:C.axis,depthTest:false,transparent:true,opacity:.9});
+hueter.dots=hueter.pts.map(()=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(.38,14,10),hMat); m.renderOrder=999; hueter.g.add(m); return m; });
+for(let i=0;i<3;i++){ const m=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,1,8),hLine); m.renderOrder=999; hueter.g.add(m); hueter.segs.push(m); }
+function updateHueter(){ if(!hueter.g.visible) return; const w=hueter.pts.map((q,i)=>{ const pv=PIV[q.n]; const v=N[q.n].localToWorld(new THREE.Vector3(q.p[0]-pv[0],q.p[1]-pv[1],q.p[2]-pv[2])); root.worldToLocal(v); hueter.dots[i].position.copy(v); return v; });
+  [[0,1],[1,2],[2,0]].forEach(([a,b],i)=>{ const m=hueter.segs[i]; _d.subVectors(w[b],w[a]); const len=_d.length(); m.position.addVectors(w[a],w[b]).multiplyScalar(.5); m.quaternion.setFromUnitVectors(Y,_d.normalize()); m.scale.set(1,len,1); }); }
+
+/* ---------- Ejes anatómicos ---------- */
+const dC=V([2,5.2,-1.6]).sub(V([-14.5,5.4,6])).normalize();
+const axElev=dC.clone().cross(Y).normalize(), axAnt=dC.clone().cross(Z).normalize();
+const KP=V([0.6,-55.7,-1.4]).sub(V(P_CAP)).normalize(), PLEN=V([0.6,-55.7,-1.4]).distanceTo(V(P_CAP));
+const d1=V([8.7,-64.4,1.6]).sub(V([6.9,-60.5,0])).normalize();
+const aAbd=d1.clone().cross(Z).normalize(), aFlex=d1.clone().cross(X.clone().negate()).normalize();
+const e1=V([9.8,-68,2.6]).sub(V([8.8,-64.8,1.8])).normalize(), aT=e1.clone().cross(X.clone().negate()).normalize();
+
+/* ---------- Pose ---------- */
+const PK=['clavElev','clavAnt','clavRot','acAng','bal','ghFlex','ghAbd','ghRot','elbow','pron','wrFlex','wrDev','t1Flex','t1Abd','t1Rot','t1Mcp','t1Ip','mcp','spread','pip','dip','f5mcp','f5pip'];
+const pose=o=>{ const p={}; PK.forEach(k=>p[k]=(o&&o[k])||0); return p; };
+let P=pose(), T=pose();
+const Q=(ax,deg)=>new THREE.Quaternion().setFromAxisAngle(ax,deg*D2R);
+const SPR=[1,0,-1,-1.6];
+function applyPose(p){
+  N.clav.quaternion.copy(Q(axElev,p.clavElev)).multiply(Q(axAnt,p.clavAnt)).multiply(Q(dC,p.clavRot));
+  const comp=Q(axElev,p.clavElev).multiply(Q(axAnt,p.clavAnt*.55)).invert();
+  N.scap.quaternion.copy(comp).multiply(Q(Y,p.acAng)).multiply(Q(Z,p.bal));
+  N.hum.quaternion.copy(Q(Z,p.ghAbd)).multiply(Q(X,-p.ghFlex)).multiply(Q(Y,p.ghRot));
+  N.ulna.quaternion.copy(Q(X,-p.elbow));
+  N.radius.quaternion.copy(Q(KP,p.pron));
+  N.carp.quaternion.copy(Q(X,-p.wrFlex)).multiply(Q(Z,p.wrDev));
+  N.mc1.quaternion.copy(Q(aAbd,p.t1Abd)).multiply(Q(aFlex,p.t1Flex)).multiply(Q(d1,p.t1Rot));
+  N.tp1.quaternion.copy(Q(aT,p.t1Mcp)); N.tp2.quaternion.copy(Q(aT,p.t1Ip));
+  for(let i=0;i<4;i++){ const l=i===3;
+    N['f'+i+'a'].quaternion.copy(Q(Z,p.spread*SPR[i])).multiply(Q(X,-(p.mcp+(l?p.f5mcp:0))));
+    N['f'+i+'b'].quaternion.copy(Q(X,-(p.pip+(l?p.f5pip:0))));
+    N['f'+i+'c'].quaternion.copy(Q(X,-(p.dip+(l?p.f5pip*.6:0)))); }
+}
+
+/* ---------- Datos de las articulaciones (Latarjet) ---------- */
+const bi=(pos,neg)=>({bi:true,pos,neg}), uni=(pos,neg)=>({bi:false,pos,neg});
+const JOINTS=[
+ {id:'ec', g:'Cintura pectoral', name:'Esternoclavicular', at:{n:'thorax',p:[-15,5.4,6.2]}, focus:['thorax','clav'],
+  view:{t:[-9,4,4],d:[.35,.35,1],r:34},
+  tipo:'Sinovial selar (en silla de montar), de movilidad reducida.',
+  rows:[['Superficies','Incisura clavicular del manubrio y primer cartílago costal ↔ extremidad medial de la clavícula. Como no se corresponden, se interpone un disco articular.'],
+        ['Medios de unión','Cápsula delgada y laxa. Ligamentos esternoclavicular anterior y posterior, interclavicular y costoclavicular.'],
+        ['Movimientos','La clavícula se eleva, desciende, va hacia adelante o hacia atrás; combinados, la circunducción.']],
+  dato:'El ligamento costoclavicular es el eje de todos los movimientos: lo que hace la extremidad medial de la clavícula se invierte en la lateral. Mira en el modelo: cuando el hombro sube, la extremidad medial baja.',
+  clin:'Movimientos de pequeña amplitud y un ligamento muy resistente explican que rara vez sufra en los traumatismos del hombro o del tórax.',
+  moves:[
+   {name:'Elevación y descenso', ...bi({t:'Elevación',a:25,m:'Trapecio (fascículos superiores y medios), elevador de la escápula y grupo inferior del serrato anterior.'},{t:'Descenso',a:8,m:'Pectoral menor y subclavio.'}), dur:4.4,
+    f:s=>({clavElev:s>0?25*s:8*s}), key:'clavElev', axis:{n:'thorax',at:P_CC,dir:axElev,len:8}},
+   {name:'Adelante y atrás', ...bi({t:'Proyección hacia adelante',a:20,m:'Sobre todo el fascículo superior del pectoral mayor; el serrato anterior aplica la escápula al tórax.'},{t:'Proyección hacia atrás',a:15,m:'Romboides, fascículos inferiores del trapecio y dorsal ancho.'}), dur:4.4,
+    f:s=>({clavAnt:s>0?20*s:15*s}), key:'clavAnt', axis:{n:'thorax',at:P_CC,dir:axAnt,len:8}},
+   {name:'Circunducción', ...uni({t:'Circunducción',m:'Combinación sucesiva de elevación, proyección hacia adelante, descenso y proyección hacia atrás.'}), dur:4.8, loop:true,
+    f:(s,u)=>({clavElev:14*Math.sin(2*Math.PI*u)+4,clavAnt:15*Math.cos(2*Math.PI*u)}), meter:()=>'', axis:null}
+  ]},
+ {id:'ac', g:'Cintura pectoral', name:'Acromioclavicular', at:{n:'clav',p:[2.3,5.4,-1.9]}, focus:['clav','scap'],
+  view:{t:[0.5,4,-1],d:[.5,.9,.7],r:26},
+  tipo:'Sinovial plana.',
+  rows:[['Superficies','Extremidad lateral de la clavícula ↔ borde medial del acromion; pequeñas, ovaladas y planas.'],
+        ['Medios de unión','Cápsula muy gruesa, reforzada por los ligamentos acromioclaviculares superior e inferior. La unión real entre clavícula y escápula la aseguran, a distancia, los ligamentos coracoclaviculares: trapezoide y conoide.'],
+        ['Movimientos','Solo de deslizamiento, que abren o cierran el ángulo escapuloclavicular.']],
+  dato:'Los ligamentos coracoclaviculares mantienen la abertura del ángulo escapuloclavicular, cuyo vértice está en esta articulación.',
+  clin:'En los esfuerzos de elevación del hombro pueden romperse los coracoclaviculares: luxación acromioclavicular, muy frecuente en trabajos de fuerza y en el rugby.',
+  moves:[
+   {name:'Deslizamiento', ...bi({t:'Abre el ángulo escapuloclavicular',a:12,m:'Movimiento pasivo: la articulación sobre todo recibe los esfuerzos que le transmite la clavícula.'},{t:'Cierra el ángulo escapuloclavicular',a:12,m:'Movimiento pasivo: la articulación sobre todo recibe los esfuerzos que le transmite la clavícula.'}), dur:4,
+    f:s=>({acAng:12*s}), key:'acAng', axis:{n:'clav',at:P_AC,dir:Y,len:7}}
+  ]},
+ {id:'et', g:'Cintura pectoral', name:'Escapulotorácica', at:{n:'scap',p:[-5.5,-4,-7.6]}, focus:['thorax','clav','scap'],
+  view:{t:[-5,-3,-5],d:[.45,.2,-1],r:58},
+  tipo:'No es una articulación verdadera: sisarcosis, unión de huesos mediada por músculos.',
+  rows:[['Planos de deslizamiento','Interserratoescapular (entre el subescapular y el serrato anterior) e interserratotorácico (entre el serrato anterior y la pared costal).'],
+        ['Movimientos','La escápula se eleva, desciende, se desplaza adelante y lateralmente o atrás y medialmente, y realiza el balanceo.']],
+  dato:'En el balanceo la escápula gira alrededor de un eje anteroposterior y sus ángulos se desplazan en sentido inverso. Es clave para llevar el brazo a la vertical.',
+  clin:'',
+  moves:[
+   {name:'Elevación y descenso', ...bi({t:'Elevación',a:25,m:'Trapecio (fascículos superiores y medios), elevador de la escápula y grupo inferior del serrato anterior.'},{t:'Descenso',a:8,m:'Pectoral menor.'}), dur:4.4,
+    f:s=>({clavElev:s>0?25*s:8*s}), key:'clavElev', axis:null},
+   {name:'Adelante-lateral y atrás-medial', ...bi({t:'Adelante y lateral',a:20,m:'Pectoral mayor (fascículo superior); el serrato anterior la mantiene aplicada contra el tórax.'},{t:'Atrás y medial',a:15,m:'Romboides, fascículos inferiores del trapecio y dorsal ancho.'}), dur:4.4,
+    f:s=>({clavAnt:s>0?20*s:15*s}), key:'clavAnt', axis:null},
+   {name:'Balanceo', ...uni({t:'Balanceo: ángulo inferior adelante y lateral',a:30,m:'Serrato anterior (grupo inferior) y fascículo superior del trapecio.'},{t:'Regreso a la posición inicial',m:'Movimiento inverso.'}), dur:4.4,
+    f:s=>({bal:30*s}), key:'bal', axis:{n:'clav',at:P_AC,dir:Z,len:8}}
+  ]},
+ {id:'gh', g:'Hombro', name:'Glenohumeral', at:{n:'scap',p:[-0.6,0,-3.4]}, focus:['scap','hum','clav'],
+  view:{t:[6,-8,0],d:[.35,.15,1],r:118},
+  tipo:'Sinovial esferoidea.',
+  rows:[['Superficies','Cavidad glenoidea, agrandada por el labrum ↔ cabeza del húmero, más voluminosa: el contacto es reducido.'],
+        ['Medios de unión','Cápsula delgada y laxa. Ligamento coracohumeral y glenohumerales superior, medio e inferior; entre el superior y el medio, el foramen oval, punto débil. Su verdadero refuerzo es el manguito rotador.'],
+        ['Movimientos','Todos: elevación y descenso anteroposterior, abducción y aducción, rotación medial y lateral, y circunducción.'],
+        ['Límites','La elevación anteroposterior no pasa de 50° sin la cintura pectoral. La abducción no supera la horizontal: el tubérculo mayor choca contra el labrum. La aducción la limita el tórax.']],
+  dato:'Toda su anatomía está orientada a la movilidad: debe su firmeza a los músculos.',
+  clin:'Sus luxaciones son frecuentes, sobre todo hacia adelante y medialmente, con tendencia a recidivar; el acromion sobresale: deformación en charretera.',
+  moves:[
+   {name:'Flexión y extensión', ...bi({t:'Elevación anterior (flexión)',a:50,m:'Deltoides (fascículos anteriores) y coracobraquial.'},{t:'Extensión',a:50,m:'Dorsal ancho, redondo mayor y fascículos posteriores del deltoides.'}), dur:4.6,
+    f:s=>({ghFlex:50*s}), key:'ghFlex', axis:{n:'scap',at:P_GH,dir:X,len:9}},
+   {name:'Abducción y aducción', ...uni({t:'Abducción',a:90,m:'Deltoides y supraespinoso.'},{t:'Aducción',m:'Pectoral mayor, dorsal ancho y redondo mayor.'}), dur:4.6,
+    f:s=>({ghAbd:90*s}), key:'ghAbd', axis:{n:'scap',at:P_GH,dir:Z,len:9}},
+   {name:'Rotación', ...bi({t:'Rotación lateral',a:70,m:'Infraespinoso y redondo menor, relativamente poco potentes.'},{t:'Rotación medial',a:65,m:'Subescapular, dorsal ancho, pectoral mayor y redondo mayor.'}), dur:5, base:{elbow:90},
+    f:s=>({ghRot:s>0?70*s:65*s}), key:'ghRot', axis:{n:'scap',at:P_GH,dir:Y,len:12}},
+   {name:'Circunducción', ...uni({t:'Circunducción',m:'Resulta de combinar los movimientos anteriores.'}), dur:5.2, loop:true,
+    f:(s,u)=>({ghFlex:40*Math.sin(2*Math.PI*u),ghAbd:35+30*Math.cos(2*Math.PI*u)}), meter:()=>'', axis:null},
+   {name:'Elevación completa', ...uni({t:'Elevación hacia la vertical',m:'Glenohumeral: deltoides y supraespinoso. Escapulotorácica: fascículo superior del trapecio y, sobre todo, el serrato anterior.'},{t:'Descenso',m:'El peso del brazo basta para bajarlo.'}), dur:6,
+    f:s=>({ghAbd:90*s,bal:52*s,clavElev:16*s,clavRot:-18*s}), meter:()=>armElev()+'° del brazo', axis:null,
+    extra:'La glenohumeral sola llega a la horizontal; para seguir subiendo, la escápula hace el balanceo y la clavícula se eleva y gira.'}
+  ]},
+ {id:'codo', g:'Codo y antebrazo', name:'Codo', at:{n:'hum',p:[2,-30.6,-1.7]}, focus:['hum','ulna','radius'],
+  view:{t:[2,-36,3],d:[1,.12,.28],r:62},
+  tipo:'Complejo articular: humeroulnar (gínglimo), humerorradial (esferoidea) y radioulnar proximal (trocoide), con una cápsula común.',
+  rows:[['Superficies','Tróclea ↔ incisura troclear de la ulna (entre olécranon y proceso coronoides); capítulo ↔ cabeza del radio.'],
+        ['Medios de unión','Ligamentos colaterales radial y ulnar: impiden los movimientos laterales.'],
+        ['Movimientos','Flexión y extensión, de 135° a 140°. Ulna y radio se desplazan juntos, como los brazos de un compás. Los movimientos laterales son nulos con el codo extendido.'],
+        ['Límites','Tensión de los ligamentos, contacto óseo y, sobre todo para la flexión, las masas musculares anteriores.']],
+  dato:'Puntos blancos: en extensión, los dos epicóndilos y el olécranon están en una línea; con el codo a 90° forman un triángulo de vértice inferior (el olécranon).',
+  clin:'Examinar esos tres puntos permite diferenciar una luxación del codo de una fractura de la extremidad inferior del húmero o del olécranon.',
+  moves:[
+   {name:'Flexión y extensión', ...uni({t:'Flexión',a:135,m:'Braquial (el flexor por excelencia), bíceps braquial y braquiorradial.'},{t:'Extensión',m:'Tríceps braquial y ancóneo.'}), dur:4.6,
+    f:s=>({elbow:135*s}), key:'elbow', axis:{n:'hum',at:P_EL,dir:X,len:10}}
+  ]},
+ {id:'ru', g:'Codo y antebrazo', name:'Radioulnares', at:{n:'ulna',p:[1.4,-56,-1.3]}, focus:['hum','ulna','radius'],
+  view:{t:[2.5,-34,11],d:[.65,.25,1],r:60},
+  tipo:'Proximal y distal: articulaciones trocoides.',
+  rows:[['Superficies','Proximal: cabeza del radio, rodeada por el ligamento anular, contra la incisura radial de la ulna. Distal: cabeza de la ulna e incisura ulnar del radio, con el disco articular como elemento esencial.'],
+        ['Medios de unión','Ligamento anular, disco articular y membrana interósea, que une los dos huesos.'],
+        ['Movimientos','Pronación y supinación: la verdadera pronosupinación va de 113° a 151°, según el codo esté extendido o flexionado (Salter y Darcus).']],
+  dato:'Es una rotación del radio alrededor de la ulna, “como una bandera alrededor de su asta”. El eje (amarillo) va del capítulo humeral a la cabeza de la ulna.',
+  clin:'En la pronación la cabeza del radio se desplaza para que su tuberosidad no enganche la ulna; cuando ocurre, se produce la “pronación dolorosa” del niño.',
+  moves:[
+   {name:'Pronación y supinación', ...uni({t:'Pronación',a:150,m:'Pronador redondo y pronador cuadrado (nervio mediano).'},{t:'Supinación',m:'Supinador (nervio radial) y bíceps braquial.'}), dur:5, base:{elbow:90},
+    f:s=>({pron:150*s}), key:'pron', axis:{n:'ulna',at:V(P_CAP).add(KP.clone().multiplyScalar(PLEN/2)).toArray(),dir:KP,len:PLEN+6}}
+  ]},
+ {id:'rc', g:'Muñeca y mano', name:'Radiocarpiana', at:{n:'radius',p:[3.6,-57.4,-1.0]}, focus:['radius','ulna','carp','thumb','fing'],
+  view:{t:[3.5,-63,0],d:[1,.15,.4],r:40},
+  tipo:'Sinovial elipsoide.',
+  rows:[['Superficies','Radio y disco articular (cavidad glenoidea) ↔ escafoides, semilunar y piramidal (cóndilo carpiano). Se llama radiocarpiana porque la ulna no participa.'],
+        ['Medios de unión','Ligamentos colaterales radial y ulnar, que limitan las inclinaciones laterales.'],
+        ['Movimientos','Flexión, extensión e inclinaciones radial (abducción) y ulnar (aducción); combinados, la circunducción. De la flexión máxima a la extensión máxima hay 180°.'],
+        ['Relaciones','Por delante, el túnel carpiano; por detrás, los tendones extensores.']],
+  dato:'El eje de todos estos movimientos pasa por la cabeza del hueso grande.',
+  clin:'',
+  moves:[
+   {name:'Flexión y extensión', ...bi({t:'Flexión',a:90,m:'Flexor radial del carpo, palmar largo y flexor ulnar del carpo (y los flexores de los dedos).'},{t:'Extensión',a:90,m:'Extensores radial largo y corto del carpo y extensor ulnar del carpo; el más directo es el radial corto.'}), dur:4.8,
+    f:s=>({wrFlex:90*s}), key:'wrFlex', axis:{n:'radius',at:P_RC,dir:X,len:7}},
+   {name:'Inclinaciones laterales', ...bi({t:'Inclinación radial (abducción)',a:20,m:'Predominio del flexor radial del carpo y del extensor radial largo (extensor-abductor).'},{t:'Inclinación ulnar (aducción)',a:35,m:'Predominio del flexor ulnar del carpo y del extensor ulnar del carpo (extensor-aductor).'}), dur:4.4,
+    f:s=>({wrDev:s>0?20*s:35*s}), key:'wrDev', axis:{n:'radius',at:P_RC,dir:Z,len:7}},
+   {name:'Circunducción', ...uni({t:'Circunducción',m:'Ejecución sucesiva de los cuatro movimientos anteriores.'}), dur:5, loop:true,
+    f:(s,u)=>({wrFlex:55*Math.sin(2*Math.PI*u),wrDev:Math.cos(2*Math.PI*u)>0?20*Math.cos(2*Math.PI*u):30*Math.cos(2*Math.PI*u)}), meter:()=>'', axis:null}
+  ]},
+ {id:'cmc1', g:'Muñeca y mano', name:'Carpometacarpiana del pulgar', short:'CMC del pulgar', at:{n:'carp',p:[6.75,-60.3,-0.1]}, focus:['carp','thumb','fing'],
+  view:{t:[5,-65,1],d:[.55,.15,1],r:30},
+  tipo:'Sinovial selar (en silla de montar): trapecio ↔ 1.er metacarpiano.',
+  rows:[['Importancia','Es esencial para el buen funcionamiento del pulgar, en particular para la oposición.'],
+        ['Movimientos','Flexión y extensión (hacia la palma o el dorso), abducción y aducción (lo separa o lo acerca a los otros metacarpianos) y oposición.'],
+        ['Otros dedos','Las carpometacarpianas del 2.º al 5.º son planas y sus movimientos mínimos; el 4.º y el 5.º son los más móviles.']],
+  dato:'En la oposición el metacarpiano gira sobre sí mismo; participan el escafoides y el trapecio: la “columna del pulgar” (Destot).',
+  clin:'',
+  moves:[
+   {name:'Flexión y extensión', ...bi({t:'Flexión (hacia la palma)',a:35,m:'Flexor largo del pulgar flexiona sus falanges y la proximal sobre el metacarpiano.'},{t:'Extensión (hacia el dorso)',a:25,m:'Extensor largo del pulgar (extiende sus falanges).'}), dur:4.4,
+    f:s=>({t1Flex:s>0?35*s:25*s}), key:'t1Flex', axis:{n:'carp',at:P_CMC1,dir:aFlex.clone().cross(d1).normalize(),len:5}},
+   {name:'Abducción y aducción', ...uni({t:'Abducción',a:40,m:'Abductor largo (en el plano de los dedos) o abductor corto (fuera de ese plano).'},{t:'Aducción',m:'Aductor del pulgar.'}), dur:4.4,
+    f:s=>({t1Abd:40*s}), key:'t1Abd', axis:{n:'carp',at:P_CMC1,dir:aAbd,len:5}},
+   {name:'Oposición', ...uni({t:'Oposición',m:'Abductor corto lleva el pulgar adelante; luego flexor corto y sobre todo el oponente, que lo hace girar.'},{t:'Regreso',m:'Extensores y abductor largo del pulgar.'}), dur:5,
+    f:s=>({t1Abd:36*s,t1Flex:17*s,t1Rot:-40*s,t1Mcp:34*s,t1Ip:30*s,f5mcp:62*s,f5pip:55*s}), meter:()=>'', axis:null,
+    extra:'El meñique también se flexiona para encontrar al pulgar, pulpejo con pulpejo.'}
+  ]},
+ {id:'mcf', g:'Muñeca y mano', name:'Metacarpofalángicas', at:{n:'carp',p:[3.6,-67.4,-1.0]}, focus:['carp','thumb','fing'],
+  view:{t:[3,-69,0],d:[.9,.15,.65],r:32},
+  tipo:'Sinoviales elipsoideas.',
+  rows:[['Superficies','Cabeza de cada metacarpiano ↔ base de la falange proximal. En conjunto tienen una gran movilidad.'],
+        ['Movimientos','Flexión y extensión, y lateralidad: aproximan o alejan la falange del eje medio de la mano. En el pulgar la lateralidad es limitada.']],
+  dato:'La rotación es posible anatómicamente (pasiva), pero no existe en la realidad funcional.',
+  clin:'',
+  moves:[
+   {name:'Flexión y extensión', ...bi({t:'Flexión',a:85,m:'Interóseos (flexionan la falange proximal).'},{t:'Extensión',a:25,m:'Extensor de los dedos, ayudado por los extensores del 2.º y del 5.º dedo.'}), dur:4.4,
+    f:s=>({mcp:s>0?85*s:25*s}), key:'mcp', axis:{n:'carp',at:[3.1,-67,-1],dir:X,len:9}},
+   {name:'Separar y juntar los dedos', ...uni({t:'Separación (abducción)',a:15,m:'Interóseos dorsales.'},{t:'Aproximación (aducción)',m:'Interóseos palmares.'}), dur:4,
+    f:s=>({spread:15*s}), key:'spread', axis:null}
+  ]},
+ {id:'if', g:'Muñeca y mano', name:'Interfalángicas', at:{n:'f1a',p:[3.6,-72.6,-1]}, focus:['fing','thumb','carp'],
+  view:{t:[3.2,-72,0],d:[1,.12,.45],r:26},
+  tipo:'Gínglimos: solo flexión y extensión.',
+  rows:[['Movimientos','Flexión y extensión; la lateralidad es prácticamente nula. En el pulgar (una sola interfalángica) la flexión y la extensión son muy amplias.']],
+  dato:'La extensión de las falanges media y distal no la hace el extensor de los dedos solo: la dan los interóseos y lumbricales a través del tendón extensor.',
+  clin:'',
+  moves:[
+   {name:'Flexión y extensión', ...uni({t:'Flexión',a:100,m:'Flexor superficial (falange media) y flexor profundo (falange distal): movimiento extremadamente potente.'},{t:'Extensión',m:'Interóseos y lumbricales, por su inserción en el tendón extensor.'}), dur:4.4,
+    f:s=>({pip:100*s,dip:70*s,t1Ip:60*s}), key:'pip', axis:{n:'f1a',at:[3.4,-72.4,-1],dir:X,len:9}}
+  ]}
+];
+const JBY={}; JOINTS.forEach(j=>JBY[j.id]=j);
+function armElev(){ const v=new THREE.Vector3(0,-1,0).applyQuaternion(N.hum.getWorldQuaternion(new THREE.Quaternion())); return Math.round(Math.acos(Math.max(-1,Math.min(1,-v.y)))/D2R); }
+
+/* ---------- Puntos de articulación ---------- */
+const hotMat=new THREE.MeshBasicMaterial({color:C.cart,transparent:true,opacity:.9,depthTest:false});
+const labelsEl=document.getElementById('labels');
+JOINTS.forEach(j=>{ const pv=PIV[j.at.n]; const m=new THREE.Mesh(new THREE.SphereGeometry(.75,16,12),hotMat); m.position.set(j.at.p[0]-pv[0],j.at.p[1]-pv[1],j.at.p[2]-pv[2]); m.renderOrder=997; m.userData.jid=j.id; N[j.at.n].add(m); j.hot=m;
+  const lb=document.createElement('div'); lb.className='label3d'; lb.textContent=j.short||j.name; labelsEl.appendChild(lb); j.lb=lb; });
+
+/* ---------- UI ---------- */
+const state={joint:null, mv:null, playing:true, t0:0, s:0, focus:true, ligs:true, spin:false, dir:1, lastS:0};
+const jointsEl=document.getElementById('joints'), info=document.getElementById('info'), dock=document.getElementById('dock');
+const mvsEl=document.getElementById('mvs'), sl=document.getElementById('sl'), meter=document.getElementById('meter'), mus=document.getElementById('mus'), playB=document.getElementById('play');
+const jBtns={};
+[...new Set(JOINTS.map(j=>j.g))].forEach(g=>{ const d=document.createElement('div'); d.className='grp'; d.innerHTML=`<h4>${g}</h4><div class="chips"></div>`;
+  JOINTS.filter(j=>j.g===g).forEach(j=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=j.name; b.addEventListener('click',()=>selectJoint(j.id)); d.querySelector('.chips').appendChild(b); jBtns[j.id]=b; });
+  jointsEl.appendChild(d); });
+
+function selectJoint(id){
+  state.joint=id; Object.entries(jBtns).forEach(([k,b])=>b.classList.toggle('on',k===id));
+  if(!id){ info.hidden=true; dock.hidden=true; state.mv=null; T=pose(); setAxis(null); hueter.g.visible=false; flyTo([-3,-34,-1],[72,-12,128]); applyLook(); return; }
+  const j=JBY[id];
+  info.innerHTML=`<div class="tag">${j.g}</div><h2>${j.name}</h2><div class="tipo">${j.tipo}</div>
+    <dl>${j.rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
+    ${j.dato?`<div class="dato"><dt>Dato clave</dt><dd>${j.dato}</dd></div>`:''}
+    ${j.clin?`<div class="clin"><dt>Correlación clínica</dt><dd>${j.clin}</dd></div>`:''}</dl>`;
+  info.hidden=false; info.scrollIntoView({block:'nearest'});
+  mvsEl.innerHTML=''; j.moves.forEach((m,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='mv'; b.textContent=m.name; b.addEventListener('click',()=>selectMove(i)); mvsEl.appendChild(b); });
+  dock.hidden=false; hueter.g.visible=id==='codo';
+  const t=V(j.view.t), dir=V(j.view.d).normalize(); flyTo(t.toArray(), t.clone().add(dir.multiplyScalar(j.view.r)).toArray());
+  applyLook(); selectMove(0);
+}
+function selectMove(i){
+  const j=JBY[state.joint], m=j.moves[i]; state.mv=m; state.t0=performance.now(); state.playing=true; syncPlay();
+  [...mvsEl.children].forEach((b,k)=>b.classList.toggle('on',k===i));
+  sl.min=m.bi?-1:0; sl.max=1; sl.value=0; setAxis(m.axis);
+}
+function syncPlay(){ playB.textContent=state.playing?'❚❚':'▶'; playB.setAttribute('aria-label',state.playing?'Pausar':'Reproducir'); }
+playB.addEventListener('click',()=>{ state.playing=!state.playing; if(state.playing){ const m=state.mv; // retomar desde la posición actual del control
+    const s=+sl.value; let u; if(m.bi) u=Math.asin(Math.max(-1,Math.min(1,s)))/(2*Math.PI); else u=Math.acos(1-2*Math.max(0,Math.min(1,s)))/(2*Math.PI); if(u<0) u+=1;
+    state.t0=performance.now()-u*m.dur*1000; } syncPlay(); });
+sl.addEventListener('input',()=>{ state.playing=false; syncPlay(); });
+function applyLook(){
+  const j=state.joint&&JBY[state.joint], foc=j&&state.focus?new Set(j.focus):null;
+  BONES.forEach(b=>{ const isS=j&&b.surf.includes(j.id); b.mat.color.copy(isS?C.cart:C.bone); b.mat.emissive.setRGB(0,0,0);
+    const op=foc&&!foc.has(b.region)&&!isS?.16:1; b.mat.transparent=op<1; b.mat.opacity=op; b.mat.depthWrite=op>=1; b.mat.needsUpdate=true; b.isS=isS; });
+  LIGS.forEach(l=>{ const on=!j||l.j===j.id; l.m.visible=state.ligs; l.mat.opacity=on?.92:.12; l.mat.depthWrite=on; l.mat.emissive=l.mat.emissive||new THREE.Color(); });
+  JOINTS.forEach(x=>{ x.hot.visible=!j; });
+}
+document.getElementById('focus').addEventListener('click',e=>{ state.focus=!state.focus; e.currentTarget.classList.toggle('on',state.focus); applyLook(); });
+document.getElementById('ligs').addEventListener('click',e=>{ state.ligs=!state.ligs; e.currentTarget.classList.toggle('on',state.ligs); applyLook(); });
+document.getElementById('spin').addEventListener('click',e=>{ state.spin=!state.spin; controls.autoRotate=state.spin; e.currentTarget.classList.toggle('on',state.spin); });
+document.getElementById('all').addEventListener('click',()=>selectJoint(null));
+
+/* ---------- Cámara ---------- */
+let fly=null;
+function flyTo(t,c){ fly={t0:controls.target.clone(),c0:camera.position.clone(),t1:V(t),c1:V(c),s:performance.now(),d:matchMedia('(prefers-reduced-motion: reduce)').matches?1:850}; }
+
+/* ---------- Selección por clic ---------- */
+const ray=new THREE.Raycaster(), ptr=new THREE.Vector2(); let down=null;
+canvas.addEventListener('pointerdown',e=>{ down=[e.clientX,e.clientY]; document.getElementById('hint').hidden=true; });
+canvas.addEventListener('pointerup',e=>{ if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>5){down=null;return;} down=null;
+  const r=canvas.getBoundingClientRect(); ptr.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ptr,camera);
+  const hits=ray.intersectObjects(JOINTS.map(j=>j.hot).filter(h=>h.visible),false); if(hits[0]) selectJoint(hits[0].object.userData.jid); });
+canvas.addEventListener('pointermove',e=>{ if(e.pointerType!=='mouse'||state.joint) return; const r=canvas.getBoundingClientRect(); ptr.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ptr,camera);
+  canvas.style.cursor=ray.intersectObjects(JOINTS.map(j=>j.hot),false).length?'pointer':'grab'; });
+
+/* ---------- Bucle ---------- */
+let lastT=0; const pv=new THREE.Vector3();
+function tick(now){
+  const dt=Math.min(.05,(now-(lastT||now))/1000); lastT=now;
+  const m=state.mv;
+  if(m){
+    let s,u=((now-state.t0)/1000/m.dur)%1;
+    if(state.playing){ s=m.bi?Math.sin(2*Math.PI*u):.5-.5*Math.cos(2*Math.PI*u); sl.value=s; } else { s=+sl.value; u=-1; }
+    const ds=s-state.lastS; if(Math.abs(ds)>1e-4) state.dir=ds>0?1:-1; state.lastS=s;
+    T=pose(Object.assign({},m.base||{},m.f(s,u<0?0:u)));
+    const ph = m.loop ? m.pos : m.bi ? (s>=0?m.pos:m.neg) : (state.dir>0?m.pos:(m.neg||m.pos));
+    const ang = m.meter ? m.meter() : Math.round(Math.abs(P[m.key]))+'°';
+    const txt = ang ? `${ph.t} · ${ang}` : ph.t;
+    if(meter.textContent!==txt) meter.textContent=txt;
+    const mh=`<b>Músculos:</b> ${ph.m}${m.extra?` <br><b>Nota:</b> ${m.extra}`:''}`; if(mus.dataset.h!==mh){ mus.innerHTML=mh; mus.dataset.h=mh; }
+  }
+  const k=1-Math.exp(-dt*12); PK.forEach(q=>P[q]+=(T[q]-P[q])*k);
+  applyPose(P); root.updateMatrixWorld(true); updateLigs(); updateAxis(); updateHueter();
+  const j=state.joint&&JBY[state.joint], pulse=.5+.5*Math.sin(now/220);
+  if(j) BONES.forEach(b=>{ if(b.isS) b.mat.emissive.setRGB(.05+.12*pulse,.18*pulse+.05,.16*pulse+.05); });
+  hotMat.opacity=.55+.4*pulse; axMat.opacity=.7+.3*pulse;
+}
+function labels(){
+  JOINTS.forEach(x=>{ if(state.joint){ x.lb.hidden=true; return; } x.hot.getWorldPosition(pv); pv.project(camera);
+    if(pv.z>1){ x.lb.hidden=true; return; } x.lb.hidden=false; x.lb.style.left=((pv.x+1)/2*stage.clientWidth)+'px'; x.lb.style.top=((1-pv.y)/2*stage.clientHeight)+'px'; });
+}
+function resize(){ const w=stage.clientWidth,h=stage.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(stage);
+function loop(now){ requestAnimationFrame(loop);
+  if(fly){ let k=Math.min(1,(now-fly.s)/fly.d); k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; controls.target.lerpVectors(fly.t0,fly.t1,k); camera.position.lerpVectors(fly.c0,fly.c1,k); if(k>=1) fly=null; }
+  tick(now); controls.update(); renderer.render(scene,camera); labels(); }
+camera.position.set(72,-12,128); controls.target.set(-3,-34,-1);
+applyLook(); resize(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
